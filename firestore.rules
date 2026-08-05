@@ -1,0 +1,101 @@
+rules_version = '2';
+
+// FinBrief Firestore security rules.
+//
+// The Node backend uses the Firebase Admin SDK, which BYPASSES these rules
+// entirely — so these exist to lock down what the Flutter client (which has
+// cloud_firestore bundled) can reach directly. Default posture is deny-all;
+// each collection below opts in explicitly.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // A user may read their own profile, but must never client-side edit the
+    // fields that govern monetization — plan, credits, trial and AI usage are
+    // written by the backend only, after server-side verification.
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      // create and update are separate: on create there is no `resource`, so
+      // diff() would error out and deny every signup. Instead check that a new
+      // document simply doesn't carry the protected fields at all.
+      allow create: if isOwner(userId)
+        && !request.resource.data.keys()
+             .hasAny(['plan', 'creditBalance', 'trialStartedAt', 'aiUsage', 'premiumSince']);
+      allow update: if isOwner(userId)
+        && !request.resource.data.diff(resource.data).affectedKeys()
+             .hasAny(['plan', 'creditBalance', 'trialStartedAt', 'aiUsage', 'premiumSince']);
+      allow delete: if false;
+
+      // Personal sub-collections: fully owner-scoped.
+      match /bookmarks/{docId} {
+        allow read, write: if isOwner(userId);
+      }
+      match /watchlist/{docId} {
+        allow read, write: if isOwner(userId);
+      }
+      match /portfolio/{docId} {
+        allow read, write: if isOwner(userId);
+      }
+      // Notifications and purchases are produced by the backend; the client
+      // reads them but must not forge them.
+      match /notifications/{docId} {
+        allow read: if isOwner(userId);
+        allow write: if false;
+      }
+      match /purchases/{docId} {
+        allow read: if isOwner(userId);
+        allow write: if false;
+      }
+    }
+
+    // Feedback is submit-only: a signed-in user can file it, but nobody can
+    // read the queue or edit entries from the client.
+    match /feedback/{docId} {
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      allow read, update, delete: if false;
+    }
+
+    // Server-driven config is world-readable to signed-in users, backend-written.
+    match /app_config/{docId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // Backend-only collections — no client access at all.
+    match /ai_history/{docId} {
+      allow read, write: if false;
+    }
+    match /ai_request_keys/{docId} {
+      allow read, write: if false;
+    }
+    match /news_cache/{docId} {
+      allow read, write: if false;
+    }
+    // The feed and archive are served through the backend API, never read
+    // directly by the client.
+    match /news/{docId} {
+      allow read, write: if false;
+    }
+    match /news_archive/{docId} {
+      allow read, write: if false;
+    }
+    match /news_digest_queue/{docId} {
+      allow read, write: if false;
+    }
+    match /admin_logs/{docId} {
+      allow read, write: if false;
+    }
+
+    // Anything not matched above is denied.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
