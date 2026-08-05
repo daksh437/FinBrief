@@ -28,7 +28,12 @@ class ApiService {
   ApiService._();
   static final ApiService instance = ApiService._();
 
-  static const _timeout = Duration(seconds: 20);
+  // The backend runs on a Render free instance, which sleeps after ~15 minutes
+  // idle and then takes 30-50s to cold start. A 20s timeout meant the first
+  // request after any quiet period always failed. Normal warm responses are
+  // well under a second, so this longer ceiling only ever applies to the
+  // wake-up case — but it makes that case succeed instead of erroring out.
+  static const _timeout = Duration(seconds: 70);
 
   Uri _uri(String path, [Map<String, dynamic>? query]) {
     return Uri.parse('${ApiConfig.baseUrl}$path').replace(

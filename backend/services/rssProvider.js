@@ -26,7 +26,11 @@ const FEEDS = {
     { name: 'Business Standard', url: 'https://www.business-standard.com/rss/markets-106.rss' },
     { name: 'LiveMint', url: 'https://www.livemint.com/rss/markets' },
     { name: 'Moneycontrol', url: 'https://www.moneycontrol.com/rss/business.xml' },
-    { name: 'Google News', url: gnews('sensex OR nifty OR "indian stock market"') },
+    // Quoted, specific phrases only. A bare `nifty` matched things like a
+    // tennis report's "nifty move", and a bare `india` pulled in unrelated
+    // regional papers — the publisher feeds above already carry the volume,
+    // so this query is here for breadth, not recall.
+    { name: 'Google News', url: gnews('"sensex" OR "nifty 50" OR "stock market india"') },
   ],
   // World coverage: major wire/finance desks plus Google News for the US,
   // Europe and Asia so the feed isn't India-only.
