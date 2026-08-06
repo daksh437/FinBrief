@@ -24,13 +24,24 @@ async function loadSeenHashes(limit = 200) {
 }
 
 /// Runs the full AI pipeline for one article (v12 §4).
+/// Pre-computes only what something actually reads.
+///
+/// This used to make THREE Gemini calls per article — summary, Hindi
+/// translation and impact — and store all three. Only `aiSummary` was ever
+/// read back (pushEngine uses it as the notification body, chatContext as
+/// recent-news context). The Hindi translation and the impact analysis were
+/// written to Firestore and never looked at by anything, because users get
+/// both on demand from the article screen, where the AI cache already keeps a
+/// repeat request free.
+///
+/// So two of every three calls here were paid for and thrown away. At a few
+/// hundred new articles a day that was the single largest consumer of the
+/// Gemini budget, spent on nothing.
 async function enrich(article) {
   const source = article.summary || article.title;
   const result = {
     aiSummary: null,
-    hindiSummary: null,
     keyPoints: [],
-    impact: null,
     followUpQuestions: [],
   };
 
@@ -42,20 +53,8 @@ async function enrich(article) {
     monitoring.logAiFailure('summary', err.message);
   }
 
-  try {
-    result.hindiSummary = await gemini.translateToHindi(result.aiSummary || source);
-  } catch (err) {
-    monitoring.logAiFailure('translate', err.message);
-  }
-
-  try {
-    result.impact = await gemini.analyzeImpact(source);
-  } catch (err) {
-    monitoring.logAiFailure('impact', err.message);
-  }
-
   // Suggested follow-ups are derived locally rather than via another Gemini
-  // call — a 4th AI request per article isn't worth the cost/latency.
+  // call — a 2nd AI request per article isn't worth the cost/latency.
   result.followUpQuestions = [
     'Why does this matter for my portfolio?',
     `What could happen next in ${article.category || 'this sector'}?`,
