@@ -1,5 +1,9 @@
-// Minimal smoke test — expand as real endpoints get test coverage.
+// Smoke tests. Network-backed assertions (RSS, Yahoo) are deliberate: the
+// value of this suite is catching a provider that changed shape, which a
+// mocked test would never see.
 const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
 
 process.env.DEV_SKIP_LIMITS = 'true';
 process.env.GEMINI_API_KEY = '';
@@ -14,6 +18,8 @@ const { rateLimit } = require('../middleware/rateLimit');
 const aiPrompts = require('../services/ai/prompts');
 const aiCache = require('../services/ai/aiCache');
 const aiEngine = require('../services/ai/engine');
+const indianMarket = require('../services/indianMarketService');
+const marketService = require('../services/marketService');
 
 async function run() {
   assert.strictEqual(gemini.MOCK_MODE, true, 'gemini should be in mock mode without an API key');

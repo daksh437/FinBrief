@@ -250,21 +250,28 @@ class _HomeScreenState extends State<HomeScreen> {
             WidgetsBinding.instance.addPostFrameCallback((_) => _startBreakingAutoScroll(breaking.length));
 
             return ListView(
-              padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+              // Bottom padding clears the chat FAB, which otherwise sits on top
+              // of the last card and hides its actions.
+              padding: const EdgeInsets.only(bottom: 88),
               children: [
                 const SizedBox(height: AppSpacing.md),
                 SizedBox(
                   height: 120,
-                  child: PageView.builder(
-                    controller: _breakingController,
-                    padEnds: false,
-                    itemCount: breaking.length,
-                    itemBuilder: (context, i) => Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                      child: BreakingCard(
-                        article: breaking[i],
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => ArticleDetailScreen(article: breaking[i])),
+                  // ClipRect because the adjacent page was bleeding past the
+                  // viewport and showing its card outline at the screen edge.
+                  // padEnds is gone with it: it only does anything when
+                  // viewportFraction < 1, so here it was noise.
+                  child: ClipRect(
+                    child: PageView.builder(
+                      controller: _breakingController,
+                      itemCount: breaking.length,
+                      itemBuilder: (context, i) => Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                        child: BreakingCard(
+                          article: breaking[i],
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => ArticleDetailScreen(article: breaking[i])),
+                          ),
                         ),
                       ),
                     ),

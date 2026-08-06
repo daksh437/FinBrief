@@ -39,6 +39,13 @@
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
             android:value="ca-app-pub-3940256099942544~3347511713" />
+        <!-- Channel that incoming FCM notifications are posted on. Must match
+             CHANNEL_ID in MainActivity, which creates it. Without this Firebase
+             falls back to an unnamed "Miscellaneous" channel that users cannot
+             manage separately from anything else. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="finbrief_alerts" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
