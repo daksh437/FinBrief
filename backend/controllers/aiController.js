@@ -2,6 +2,7 @@ const gemini = require('../services/geminiService');
 const tts = require('../services/ttsService');
 const aiHistory = require('../services/aiHistoryService');
 const chatContext = require('../services/chatContextService');
+const adviceGuard = require('../services/adviceGuard');
 
 async function translate(req, res) {
   const { text } = req.body;
@@ -57,6 +58,23 @@ async function chat(req, res) {
     return res.status(400).json({ success: false, error: 'messages array is required' });
   }
 
+  const lastUserMessage = messages[messages.length - 1]?.text || '';
+
+  // Refuse decision questions before they reach the model. The prompt already
+  // forbids advice and the model usually complies, but "usually" is not a
+  // control — one slip telling someone to buy a named stock is the thing SEBI's
+  // adviser regulations cover. Refusing here can't be jailbroken or lost to a
+  // bad generation, and a blocked question spends no Gemini quota.
+  if (adviceGuard.seeksAdvice(lastUserMessage)) {
+    aiHistory.log({
+      userId: req.user.uid,
+      action: 'chat_refused',
+      prompt: lastUserMessage,
+      response: adviceGuard.REFUSAL,
+    });
+    return res.json({ success: true, data: { reply: adviceGuard.REFUSAL, refused: true } });
+  }
+
   // Context is best-effort — a failure here must not block the reply.
   let context = null;
   try {
@@ -66,7 +84,6 @@ async function chat(req, res) {
   }
 
   const reply = await gemini.chat(messages, context);
-  const lastUserMessage = messages[messages.length - 1]?.text || '';
   aiHistory.log({ userId: req.user.uid, action: 'chat', prompt: lastUserMessage, response: reply });
   res.json({ success: true, data: { reply }, fallback: gemini.MOCK_MODE });
 }

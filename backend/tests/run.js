@@ -20,6 +20,7 @@ const aiCache = require('../services/ai/aiCache');
 const aiEngine = require('../services/ai/engine');
 const indianMarket = require('../services/indianMarketService');
 const marketService = require('../services/marketService');
+const adviceGuard = require('../services/adviceGuard');
 
 async function run() {
   assert.strictEqual(gemini.MOCK_MODE, true, 'gemini should be in mock mode without an API key');
@@ -106,6 +107,49 @@ async function run() {
   assert.deepStrictEqual(Object.keys(structured).sort(), ['confidence', 'keyPoints', 'summary']);
   const impactResult = await gemini.analyzeImpact('x');
   assert.ok('affectedSectors' in impactResult, 'impact must include affectedSectors');
+
+  // --- Advice guard ---------------------------------------------------------
+  //
+  // This is the one control standing between a user asking "should I buy TCS"
+  // and the model answering. Prompt wording alone can't guarantee a refusal,
+  // so the guard has to keep working — and it has to keep NOT firing on the
+  // ordinary questions the app exists to answer.
+  for (const question of [
+    'Should I buy TCS?',
+    'should i sell my reliance shares',
+    'Is it a good time to invest in IT stocks?',
+    'buy or sell HDFC?',
+    'What is the target price for Infosys',
+    'whats the price target',
+    'Will Nifty go up tomorrow?',
+    'How much should I invest in gold',
+    'which stock should i buy today',
+    'recommend a stock for long term',
+    'give me stock tips',
+    'is reliance worth buying',
+  ]) {
+    assert.ok(adviceGuard.seeksAdvice(question), `advice guard must block: "${question}"`);
+  }
+
+  for (const question of [
+    'What is a repo rate?',
+    'Why did TCS fall today?',
+    'Explain this news in simple Hindi',
+    'What does RBI holding rates mean for banks?',
+    'who is the CEO of Infosys',
+    'What is an IPO?',
+    'Explain P/E ratio',
+    'what is the share price of TCS',
+    'why are metal stocks in news',
+  ]) {
+    assert.ok(!adviceGuard.seeksAdvice(question), `advice guard must NOT block: "${question}"`);
+  }
+
+  // Generated content must carry no direction — see the SEBI note in
+  // services/ai/prompts.js.
+  const impact = await gemini.analyzeImpact('RBI holds repo rate at 6.5%');
+  assert.ok(!('sentiment' in impact), 'impact must not return a sentiment label');
+  assert.ok(!('confidence' in impact), 'impact must not return a confidence score');
 
   console.log('All smoke tests passed.');
 }

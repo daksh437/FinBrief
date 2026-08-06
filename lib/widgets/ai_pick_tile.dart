@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/ai_pick.dart';
+import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 
 /// A company the day's news is about.
@@ -34,9 +35,29 @@ class AiPickTile extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 2),
-          Text(
-            pick.symbol,
-            style: theme.textTheme.labelSmall?.copyWith(color: theme.hintColor),
+          Row(
+            children: [
+              Text(
+                pick.symbol,
+                style: theme.textTheme.labelSmall?.copyWith(color: theme.hintColor),
+              ),
+              if (pick.hasPrice) ...[
+                const Spacer(),
+                Text(
+                  '₹${pick.price!.toStringAsFixed(2)}',
+                  style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  '${pick.isUp ? '+' : ''}${pick.changePercent!.toStringAsFixed(2)}%',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    // Colour here is reporting today's move, not a view on it.
+                    color: pick.isUp ? AppColors.success : AppColors.danger,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ],
           ),
           const SizedBox(height: 6),
           Text(

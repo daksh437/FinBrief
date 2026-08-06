@@ -65,19 +65,47 @@ async function headlineBlock() {
     .join('\n');
 }
 
-/// Companies/assets in today's news. Empty on failure — the client hides the
-/// section rather than falling back to invented names.
+/// Companies/assets in today's news, each with its live price.
+///
+/// The price is attached here rather than left to the client so the tile shows
+/// a fact where a bullish/bearish badge used to sit. A quote that can't be
+/// resolved is simply left off — the tile drops the price line rather than
+/// showing a made-up number.
+///
+/// Empty on failure: the client hides the section rather than falling back to
+/// invented names.
 async function getInFocus() {
-  const cached = fresh(aiCache.inFocus);
-  if (cached) return cached;
+  let items = fresh(aiCache.inFocus);
 
+  if (!items) {
+    try {
+      items = await geminiService.inFocus(await headlineBlock());
+      if (!items.length) return [];
+      aiCache.inFocus = { at: Date.now(), data: items };
+    } catch (err) {
+      console.error('[marketService] inFocus failed:', err.message);
+      return [];
+    }
+  }
+
+  // Prices are attached AFTER the cache, not inside it. The AI result is
+  // cached for an hour because generating it is expensive; a price cached for
+  // an hour would be an hour-old price shown as today's, which on a finance
+  // screen is worse than showing none. getLiveQuotes has its own 60s cache, so
+  // this stays cheap.
   try {
-    const items = await geminiService.inFocus(await headlineBlock());
-    if (items.length) aiCache.inFocus = { at: Date.now(), data: items };
-    return items;
+    const quotes = await indianMarketService.getLiveQuotes(items.map((i) => i.symbol));
+    const bySymbol = Object.fromEntries(quotes.map((q) => [q.symbol, q]));
+    return items.map((item) => ({
+      ...item,
+      price: bySymbol[item.symbol]?.price ?? null,
+      changePercent: bySymbol[item.symbol]?.changePercent ?? null,
+    }));
   } catch (err) {
-    console.error('[marketService] inFocus failed:', err.message);
-    return [];
+    // A quote outage shouldn't blank the section; the tiles just lose the
+    // price line.
+    console.error('[marketService] inFocus quotes failed:', err.message);
+    return items;
   }
 }
 
