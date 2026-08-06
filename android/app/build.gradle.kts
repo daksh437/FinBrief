@@ -31,6 +31,18 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+
+            // Shrinking stays on — it is what keeps the APK to a sane size —
+            // but R8 needs the keep rules in proguard-rules.pro. Without them
+            // it renames Room's generated WorkDatabase_Impl, which Room looks
+            // up by name at runtime, and the release build dies on launch
+            // while debug (no shrinking) works perfectly.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 }
