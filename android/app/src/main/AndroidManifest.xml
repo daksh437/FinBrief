@@ -31,14 +31,13 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
-        <!-- TODO: replace with the real production AdMob App ID before release
-             (see https://goo.gle/admob-android-update-manifest). This is
-             Google's public sample/test App ID — required for the app to
-             start at all once google_mobile_ads is a dependency, even before
-             any ad units are wired up. -->
+        <!-- Real AdMob App ID. This one is safe in every build: it only
+             identifies the publisher. What must never be real in a debug build
+             is the *ad unit* id — clicking your own live ad is what Google
+             counts as invalid traffic. AdConfig handles that split. -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-3940256099942544~3347511713" />
+            android:value="ca-app-pub-6637437102244163~9399247369" />
         <!-- Channel that incoming FCM notifications are posted on. Must match
              CHANNEL_ID in MainActivity, which creates it. Without this Firebase
              falls back to an unnamed "Miscellaneous" channel that users cannot
