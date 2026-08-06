@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/ai_pick.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
+import '../utils/money.dart';
 
 /// A company the day's news is about.
 ///
@@ -44,7 +45,7 @@ class AiPickTile extends StatelessWidget {
               if (pick.hasPrice) ...[
                 const Spacer(),
                 Text(
-                  '₹${pick.price!.toStringAsFixed(2)}',
+                  Money.format(pick.price, pick.currency),
                   style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(width: 4),

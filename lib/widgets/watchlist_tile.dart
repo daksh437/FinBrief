@@ -1,24 +1,27 @@
 import 'package:flutter/material.dart';
+import '../models/quote.dart';
 import '../models/watchlist_item.dart';
 import '../theme/app_colors.dart';
+import '../utils/money.dart';
 
 class WatchlistTile extends StatelessWidget {
   final WatchlistItem item;
-  final double? currentPrice;
-  final double? changePercent;
+
+  /// Null when the symbol couldn't be resolved. The tile then shows no price
+  /// rather than a made-up one.
+  final Quote? quote;
   final VoidCallback onRemove;
 
   const WatchlistTile({
     super.key,
     required this.item,
     required this.onRemove,
-    this.currentPrice,
-    this.changePercent,
+    this.quote,
   });
 
   @override
   Widget build(BuildContext context) {
-    final up = (changePercent ?? 0) >= 0;
+    final up = (quote?.changePercent ?? 0) >= 0;
 
     return Dismissible(
       key: ValueKey(item.symbol),
@@ -32,15 +35,22 @@ class WatchlistTile extends StatelessWidget {
       ),
       child: ListTile(
         title: Text(item.symbol),
-        subtitle: item.alertPrice != null ? Text('Alert at ${item.alertPrice}') : null,
-        trailing: currentPrice != null
+        subtitle: item.alertPrice != null
+            // The alert price is the user's own figure, so it carries the same
+            // currency as the instrument.
+            ? Text('Alert at ${Money.format(item.alertPrice, quote?.currency)}')
+            : null,
+        trailing: quote != null
             ? Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(currentPrice!.toStringAsFixed(2), style: const TextStyle(fontWeight: FontWeight.w600)),
                   Text(
-                    '${up ? '+' : ''}${(changePercent ?? 0).toStringAsFixed(2)}%',
+                    Money.format(quote!.price, quote!.currency),
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  Text(
+                    '${up ? '+' : ''}${(quote!.changePercent ?? 0).toStringAsFixed(2)}%',
                     style: TextStyle(color: up ? AppColors.success : AppColors.danger, fontSize: 12),
                   ),
                 ],

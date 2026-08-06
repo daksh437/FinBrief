@@ -17,12 +17,17 @@ class AiPick {
   final double? price;
   final double? changePercent;
 
+  /// ISO code from the quote source ("INR", "USD"). Never assumed — an Indian
+  /// listing and a US one can both appear in the same list.
+  final String? currency;
+
   AiPick({
     required this.symbol,
     required this.name,
     required this.reason,
     this.price,
     this.changePercent,
+    this.currency,
   });
 
   bool get hasPrice => price != null;
@@ -35,6 +40,7 @@ class AiPick {
       reason: json['reason'] as String,
       price: (json['price'] as num?)?.toDouble(),
       changePercent: (json['changePercent'] as num?)?.toDouble(),
+      currency: json['currency'] as String?,
     );
   }
 }

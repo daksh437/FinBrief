@@ -59,6 +59,10 @@ async function quote({ symbol, display, name }) {
     name,
     value: Number(price.toFixed(2)),
     changePercent: Number(changePercent.toFixed(2)),
+    // Carried through so the app doesn't print a rupee sign in front of a
+    // dollar price. Yahoo reports this per instrument: INR for an NSE listing,
+    // USD for a US one or for crypto.
+    currency: meta.currency || null,
   };
 }
 
@@ -137,7 +141,12 @@ async function liveQuote(symbol) {
     try {
       const result = await quote({ symbol: candidate, display: symbol, name: symbol });
       if (result) {
-        const data = { symbol, price: result.value, changePercent: result.changePercent };
+        const data = {
+          symbol,
+          price: result.value,
+          changePercent: result.changePercent,
+          currency: result.currency,
+        };
         quoteCache.set(symbol, { at: Date.now(), data });
         return data;
       }

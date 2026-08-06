@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import '../../models/news_article.dart';
 import '../../models/portfolio_item.dart';
+import '../../models/quote.dart';
 import '../../services/market_service.dart';
 import '../../services/news_service.dart';
 import '../../services/portfolio_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
+import '../../utils/money.dart';
 import '../../widgets/ai_insight_card.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/news_card.dart';
@@ -21,7 +23,7 @@ class PortfolioScreen extends StatefulWidget {
 
 class _PortfolioScreenState extends State<PortfolioScreen> {
   late Future<List<PortfolioItem>> _itemsFuture;
-  Map<String, double> _quotes = {};
+  Map<String, Quote> _quotes = {};
   String? _insight;
   List<NewsArticle> _relatedNews = [];
 
@@ -118,10 +120,21 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
           final totalInvested = items.fold<double>(0, (sum, i) => sum + i.investedValue);
           final totalCurrent = items.fold<double>(
             0,
-            (sum, i) => sum + (_quotes[i.symbol] != null ? _quotes[i.symbol]! * i.quantity : i.investedValue),
+            (sum, i) => sum + (_quotes[i.symbol] != null ? _quotes[i.symbol]!.price * i.quantity : i.investedValue),
           );
           final totalPnl = totalCurrent - totalInvested;
           final pnlColor = totalPnl >= 0 ? AppColors.success : AppColors.danger;
+
+          // Adding a rupee holding to a dollar holding gives a number that
+          // means nothing. Totals are only shown when every holding shares a
+          // currency; otherwise the per-holding cards still work and the
+          // summary says why it can't add them up.
+          final currencies = items
+              .map((i) => _quotes[i.symbol]?.currency)
+              .whereType<String>()
+              .toSet();
+          final mixedCurrencies = currencies.length > 1;
+          final totalsCurrency = currencies.length == 1 ? currencies.first : null;
 
           return ListView(
             padding: const EdgeInsets.all(AppSpacing.md),
@@ -131,34 +144,47 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
                   padding: const EdgeInsets.all(AppSpacing.md),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text('Total Invested'),
-                          Text('₹${totalInvested.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text('Current Value'),
-                          Text('₹${totalCurrent.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                        ],
-                      ),
-                      const Divider(),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text('Overall P/L'),
-                          Text(
-                            '${totalPnl >= 0 ? '+' : ''}₹${totalPnl.toStringAsFixed(2)}',
-                            style: TextStyle(color: pnlColor, fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                    ],
+                    children: mixedCurrencies
+                        ? [
+                            const Text(
+                              'Your holdings are in more than one currency, so they '
+                              "can't be totalled. Each holding below shows its own value.",
+                            ),
+                          ]
+                        : [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text('Total Invested'),
+                                Text(
+                                  Money.format(totalInvested, totalsCurrency),
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text('Current Value'),
+                                Text(
+                                  Money.format(totalCurrent, totalsCurrency),
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                            const Divider(),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text('Overall P/L'),
+                                Text(
+                                  Money.formatSigned(totalPnl, totalsCurrency),
+                                  style: TextStyle(color: pnlColor, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                          ],
                   ),
                 ),
               ),
@@ -170,7 +196,7 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
               Text('Allocation', style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: AppSpacing.sm),
               ...items.map((item) {
-                final value = _quotes[item.symbol] != null ? _quotes[item.symbol]! * item.quantity : item.investedValue;
+                final value = _quotes[item.symbol] != null ? _quotes[item.symbol]!.price * item.quantity : item.investedValue;
                 final percent = totalCurrent > 0 ? (value / totalCurrent) * 100 : 0;
                 return Padding(
                   padding: const EdgeInsets.only(bottom: AppSpacing.sm),
@@ -200,7 +226,7 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
                     padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                     child: PortfolioCard(
                       item: item,
-                      currentPrice: _quotes[item.symbol],
+                      quote: _quotes[item.symbol],
                       onRemove: () async {
                         await PortfolioService.instance.remove(item.symbol);
                         setState(_load);

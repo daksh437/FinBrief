@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/watchlist_item.dart';
+import '../../models/quote.dart';
 import '../../services/market_service.dart';
 import '../../services/watchlist_service.dart';
 import '../../theme/app_spacing.dart';
@@ -17,7 +18,7 @@ class WatchlistScreen extends StatefulWidget {
 
 class _WatchlistScreenState extends State<WatchlistScreen> {
   late Future<List<WatchlistItem>> _itemsFuture;
-  Map<String, double> _quotes = {};
+  Map<String, Quote> _quotes = {};
 
   @override
   void initState() {
@@ -113,7 +114,7 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
                 ...groupItems.map(
                   (item) => WatchlistTile(
                     item: item,
-                    currentPrice: _quotes[item.symbol],
+                    quote: _quotes[item.symbol],
                     onRemove: () async {
                       await WatchlistService.instance.remove(item.symbol);
                       setState(_load);
