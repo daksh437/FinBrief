@@ -1,0 +1,39 @@
+{
+  "title": "Terms of Service",
+  "lastUpdated": "6 August 2026",
+  "intro": "By using FinBrief you agree to these terms. Please read the section on investment advice carefully — it explains the limits of what this app is.",
+  "sections": [
+    {
+      "heading": "Not investment advice",
+      "body": "FinBrief provides news and general information only. Nothing in the app is investment, financial, legal or tax advice, and nothing in it is a recommendation to buy, sell or hold any security.\n\nThis includes AI summaries, market-impact sentiment, the \"In Focus Today\" list and any other generated content. Those describe what the news says; they do not tell you what to do. We are not a SEBI-registered investment adviser or research analyst. Consider speaking to a registered adviser before making any investment decision.\n\nYou are solely responsible for your own investment decisions and their outcomes."
+    },
+    {
+      "heading": "AI-generated content can be wrong",
+      "body": "Summaries, translations and analysis are produced automatically by AI. They can misread an article, omit important context, or state something incorrectly — including numbers, company names and dates. Always read the original article, which we link to on every item, before relying on anything."
+    },
+    {
+      "heading": "Market data",
+      "body": "Prices, indices and other market figures come from third-party sources and are provided as-is. They may be delayed, incomplete or temporarily unavailable, and they are not suitable for trading decisions. Where a price cannot be retrieved we show nothing rather than an estimate.\n\nPortfolio values are calculated from holdings you enter yourself and are an indication only, not a statement of account."
+    },
+    {
+      "heading": "Your account",
+      "body": "You must be 18 or older to use FinBrief. Keep your login details secure — you are responsible for activity on your account. Do not misuse the service: no automated scraping, no attempts to bypass usage limits, and no reselling or redistributing our content.\n\nYou can delete your account at any time from Profile → Delete Account."
+    },
+    {
+      "heading": "Free usage, subscriptions and credits",
+      "body": "Free accounts include a limited number of AI actions per day. Subscriptions and credit packs are sold through Google Play, and payments, renewals and refunds are handled under Google Play's terms.\n\nWe may change the limits and pricing of free and paid tiers. Where a change materially reduces what you have already paid for, we will tell you in advance."
+    },
+    {
+      "heading": "News content",
+      "body": "Headlines, snippets and images come from third-party publishers and remain their property. We link to the original article and do not reproduce full articles."
+    },
+    {
+      "heading": "Availability and liability",
+      "body": "FinBrief is provided as-is. We do not guarantee it will be available without interruption, or that news, data or AI features will always be accurate or current.\n\nTo the fullest extent permitted by law, we are not liable for any trading or investment loss, or for any indirect or consequential loss, arising from your use of the app."
+    },
+    {
+      "heading": "Changes and contact",
+      "body": "We may update these terms; the date at the top of this page shows when they last changed. Continuing to use the app after a change means you accept the updated terms. Questions can be sent through the Support section of the app."
+    }
+  ]
+}

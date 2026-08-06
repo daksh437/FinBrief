@@ -14,6 +14,7 @@ const marketRoutes = require('./routes/market');
 const feedbackRoutes = require('./routes/feedback');
 const configRoutes = require('./routes/config');
 const feedRoutes = require('./routes/feed');
+const legalRoutes = require('./routes/legal');
 const { rateLimit } = require('./middleware/rateLimit');
 const { startJobs } = require('./jobs');
 
@@ -26,6 +27,10 @@ app.use(express.json({ limit: '2mb' }));
 // throttled. Everything below gets a broad per-user/IP ceiling; /ai has its
 // own tighter limit on top.
 app.get('/health', (req, res) => res.json({ success: true, status: 'ok', uptime: process.uptime() }));
+
+// Legal pages sit above the limiter too: these are the URLs given to Google
+// Play and linked publicly, so they must always load.
+app.use('/', legalRoutes);
 
 app.use(rateLimit({ name: 'global', windowMs: 60_000, max: 120 }));
 

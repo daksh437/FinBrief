@@ -1,5 +1,48 @@
 import 'package:flutter/material.dart';
+import '../services/legal_service.dart';
 import '../theme/app_spacing.dart';
+
+/// Loads a legal document from its bundled asset and renders it.
+///
+/// Reading a bundled asset is fast and can't fail in practice, but it is still
+/// async, so the app bar is shown immediately with [fallbackTitle] rather than
+/// flashing an empty screen.
+class LegalDocumentLoader extends StatelessWidget {
+  const LegalDocumentLoader({super.key, required this.assetPath, required this.fallbackTitle});
+
+  final String assetPath;
+  final String fallbackTitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<LegalContent>(
+      future: LegalService.load(assetPath),
+      builder: (context, snapshot) {
+        final doc = snapshot.data;
+        if (doc == null) {
+          return Scaffold(
+            appBar: AppBar(title: Text(fallbackTitle)),
+            body: Center(
+              child: snapshot.hasError
+                  ? const Padding(
+                      padding: EdgeInsets.all(AppSpacing.lg),
+                      child: Text("This document couldn't be loaded."),
+                    )
+                  : const CircularProgressIndicator(),
+            ),
+          );
+        }
+
+        return LegalDocument(
+          title: doc.title,
+          lastUpdated: doc.lastUpdated,
+          intro: doc.intro,
+          sections: doc.sections,
+        );
+      },
+    );
+  }
+}
 
 /// A titled block of legal copy.
 class LegalSection {

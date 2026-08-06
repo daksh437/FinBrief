@@ -119,6 +119,12 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
+  assets:
+    # Legal copy lives in backend/legal so the hosted pages (served by the
+    # backend at /privacy and /terms) and these in-app screens render from the
+    # same source. Two copies of legal text would eventually disagree.
+    - backend/legal/
+
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg
