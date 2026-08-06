@@ -43,3 +43,11 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Release signing. The upload keystore lives OUTSIDE this folder (see
+# android/key.properties) because this repo is public — but these patterns are
+# a second line of defence in case one is ever copied in. A leaked upload key
+# lets anyone publish an update as you.
+*.jks
+*.keystore
+android/key.properties
