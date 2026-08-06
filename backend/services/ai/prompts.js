@@ -48,6 +48,38 @@ const PROMPTS = {
     build: (text) => `Analyse the market impact of this financial news.\n\nText:\n${text}`,
   },
 
+  // "In focus today" — grounded in the day's actual headlines rather than a
+  // stored list. Deliberately framed as observation, not recommendation: the
+  // sentiment describes what the news implies, and the prompt forbids buy/sell
+  // language, since naming stocks with a call attached is advice.
+  inFocus: {
+    version: 'v1',
+    system:
+      `${SYSTEM_BASE} You identify which companies or assets are in the news today and why. ` +
+      'You never recommend buying, selling or holding anything, and never predict prices.',
+    output:
+      'Respond as strict JSON: an array of 3 objects with keys "symbol" (NSE ticker or ' +
+      'asset code, uppercase), "name" (company or asset name), "sentiment" (one of ' +
+      '"bullish", "bearish", "neutral" — describing what the news implies for it, not a ' +
+      'recommendation), and "reason" (one short sentence citing the news). ' +
+      'Only include names that actually appear in the headlines provided.',
+    build: (headlines) =>
+      `From these headlines, pick the 3 companies or assets most in focus today.\n\n` +
+      `Headlines:\n${headlines}`,
+  },
+
+  // One-line market read for the Home screen, also grounded in real headlines.
+  marketBrief: {
+    version: 'v1',
+    system: `${SYSTEM_BASE} You summarise the overall market mood in a single sentence.`,
+    output:
+      'Return one plain sentence of at most 25 words. No JSON, no markdown, no ticker ' +
+      'recommendations, no price predictions.',
+    build: (headlines) =>
+      `What is the overall mood of the Indian market today, based on these headlines?\n\n` +
+      `Headlines:\n${headlines}`,
+  },
+
   explain: {
     version: 'v1',
     system: `${SYSTEM_BASE} You explain financial news clearly to non-experts.`,

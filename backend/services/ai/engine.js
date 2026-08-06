@@ -19,6 +19,14 @@ const client = MOCK_MODE ? null : new GoogleGenerativeAI(API_KEY);
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+/// A daily-quota exhaustion, as opposed to a momentary rate limit. Retrying
+/// the same model is pointless — the allowance is gone until tomorrow — so
+/// this switches models instead of backing off.
+function isQuotaExhausted(err) {
+  const msg = String(err?.message || '');
+  return /PerDay|per day|GenerateRequestsPerDay/i.test(msg) || /quotaValue.{0,6}"?0"?\b/.test(msg);
+}
+
 /// Rate limits and transient 5xx are worth retrying; malformed requests and
 /// auth failures are not — retrying those just burns time and quota.
 function isRetryable(err) {
@@ -69,26 +77,40 @@ async function run(task, args = [], { cache = true, mockValue } = {}) {
   }
 
   let lastError;
-  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
-    // Final attempt drops the strict output template — formatting demands are
-    // the usual cause of repeated failures (v13 §9 fallback prompts).
-    const isFinal = attempt === MAX_ATTEMPTS;
-    const activePrompt = isFinal ? prompts.compose(task, args, { fallback: true }) : prompt;
 
-    try {
-      const started = Date.now();
-      const text = await callModel(model, activePrompt);
-      monitoring.write('info', 'ai_call', { task, model, attempt, ms: Date.now() - started, fallback: isFinal });
+  // Outer loop walks the model chain: free-tier quota is per model and small,
+  // so when one model's daily allowance runs out the next one usually still
+  // has room. Inner loop is the per-model retry with backoff.
+  outer: for (const activeModel of modelRouter.modelChainFor(task)) {
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+      // Final attempt drops the strict output template — formatting demands are
+      // the usual cause of repeated failures (v13 §9 fallback prompts).
+      const isFinal = attempt === MAX_ATTEMPTS;
+      const activePrompt = isFinal ? prompts.compose(task, args, { fallback: true }) : prompt;
 
-      if (cache && !isFinal) await aiCache.set(cacheKey, text, { task, model, version });
-      return text;
-    } catch (err) {
-      lastError = err;
-      monitoring.logAiFailure(task, `attempt ${attempt}/${MAX_ATTEMPTS}: ${err.message}`);
+      try {
+        const started = Date.now();
+        const text = await callModel(activeModel, activePrompt);
+        monitoring.write('info', 'ai_call', {
+          task,
+          model: activeModel,
+          attempt,
+          ms: Date.now() - started,
+          fallback: isFinal,
+        });
 
-      if (!isRetryable(err) || isFinal) break;
-      // Exponential backoff so a rate limit isn't hammered.
-      await sleep(BASE_BACKOFF_MS * 2 ** (attempt - 1));
+        if (cache && !isFinal) await aiCache.set(cacheKey, text, { task, model: activeModel, version });
+        return text;
+      } catch (err) {
+        lastError = err;
+        monitoring.logAiFailure(task, `${activeModel} attempt ${attempt}/${MAX_ATTEMPTS}: ${err.message}`);
+
+        // Daily allowance gone — no amount of waiting helps, move on.
+        if (isQuotaExhausted(err)) continue outer;
+        if (!isRetryable(err) || isFinal) break outer;
+        // Exponential backoff so a momentary rate limit isn't hammered.
+        await sleep(BASE_BACKOFF_MS * 2 ** (attempt - 1));
+      }
     }
   }
 

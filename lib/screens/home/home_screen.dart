@@ -10,6 +10,7 @@ import '../../services/market_service.dart';
 import '../../services/news_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
+import '../../widgets/ai_disclaimer.dart';
 import '../../widgets/ai_insight_card.dart';
 import '../../widgets/ai_pick_tile.dart';
 import '../../widgets/breaking_card.dart';
@@ -294,7 +295,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 _sectionTitle('Market Indices'),
                 _marketRow(market.indices),
                 if (aiPicks.isNotEmpty) ...[
-                  _sectionTitle('AI Picks'),
+                  // Named for what it is: companies the day's news is about.
+                  // It is deliberately not "Picks" — naming stocks with a call
+                  // attached reads as a recommendation, which this is not.
+                  _sectionTitle('In Focus Today'),
                   SizedBox(
                     // Name/sentiment row + 2-line reason — same tight-fit risk
                     // as the market row above.
@@ -307,6 +311,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       itemBuilder: (context, i) => AiPickTile(pick: aiPicks[i]),
                     ),
                   ),
+                  const AiDisclaimer(compact: true),
                 ],
                 _sectionTitle('Latest News'),
                 ...latest.map(

@@ -101,6 +101,40 @@ async function chat(messages, context = null) {
   return engine.run('chat', [question, context], { cache: false });
 }
 
+/// The 3 companies/assets most in the news, derived from real headlines.
+/// Returns [] rather than inventing anything when the output is unusable —
+/// the Home screen hides the section instead of showing made-up names.
+async function inFocus(headlines) {
+  if (MOCK_MODE) return [];
+
+  const raw = await engine.run('inFocus', [headlines]);
+  const match = String(raw || '').match(/\[[\s\S]*\]/);
+  if (!match) return [];
+
+  try {
+    const parsed = JSON.parse(match[0]);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((p) => p && p.symbol && p.name && p.reason)
+      .slice(0, 3)
+      .map((p) => ({
+        symbol: String(p.symbol).toUpperCase(),
+        name: String(p.name),
+        sentiment: ['bullish', 'bearish', 'neutral'].includes(p.sentiment) ? p.sentiment : 'neutral',
+        reason: String(p.reason),
+      }));
+  } catch {
+    return [];
+  }
+}
+
+/// One-sentence read on the day's market mood, from real headlines.
+async function marketBrief(headlines) {
+  if (MOCK_MODE) return null;
+  const text = String((await engine.run('marketBrief', [headlines])) || '').trim();
+  return text || null;
+}
+
 module.exports = {
   translateToHindi,
   summarize,
@@ -108,5 +142,7 @@ module.exports = {
   analyzeImpact,
   explain,
   chat,
+  inFocus,
+  marketBrief,
   MOCK_MODE,
 };

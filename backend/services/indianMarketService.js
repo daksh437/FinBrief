@@ -105,4 +105,58 @@ async function getForex() {
   }
 }
 
-module.exports = { getIndices, getGold, getForex, fetchQuotes, INDICES };
+// --- Per-symbol quotes (portfolio / watchlist) ---------------------------
+//
+// Users type plain tickers ("RELIANCE", "AAPL", "BTC"), so each has to be
+// mapped onto Yahoo's naming before it can be looked up.
+const INDEX_ALIASES = {
+  SENSEX: '^BSESN',
+  NIFTY: '^NSEI',
+  NIFTY50: '^NSEI',
+  BANKNIFTY: '^NSEBANK',
+};
+
+const CRYPTO = new Set(['BTC', 'ETH', 'USDT', 'BNB', 'SOL', 'XRP', 'ADA', 'DOGE', 'MATIC', 'DOT', 'LTC']);
+
+/// Yahoo symbols to try, in order. India first — that's the audience — with a
+/// bare fallback so US listings still resolve.
+function candidates(symbol) {
+  if (INDEX_ALIASES[symbol]) return [INDEX_ALIASES[symbol]];
+  if (CRYPTO.has(symbol)) return [`${symbol}-USD`];
+  if (symbol.includes('.') || symbol.startsWith('^')) return [symbol];
+  return [`${symbol}.NS`, symbol];
+}
+
+const quoteCache = new Map();
+
+async function liveQuote(symbol) {
+  const hit = quoteCache.get(symbol);
+  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.data;
+
+  for (const candidate of candidates(symbol)) {
+    try {
+      const result = await quote({ symbol: candidate, display: symbol, name: symbol });
+      if (result) {
+        const data = { symbol, price: result.value, changePercent: result.changePercent };
+        quoteCache.set(symbol, { at: Date.now(), data });
+        return data;
+      }
+    } catch (_) {
+      // Try the next candidate; an unknown ticker 404s on the first form.
+    }
+  }
+  return null;
+}
+
+/// Live prices for arbitrary user-held symbols.
+///
+/// Symbols that can't be resolved are simply omitted rather than filled with a
+/// made-up number — the client already falls back to the user's invested value
+/// and hides the change indicator when a price is missing. Showing an invented
+/// price on a portfolio screen would be worse than showing none.
+async function getLiveQuotes(symbols = []) {
+  const results = await Promise.all(symbols.map((s) => liveQuote(s).catch(() => null)));
+  return results.filter(Boolean);
+}
+
+module.exports = { getIndices, getGold, getForex, fetchQuotes, getLiveQuotes, INDICES };

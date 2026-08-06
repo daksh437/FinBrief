@@ -1,9 +1,10 @@
-// Indices / gold / forex / IPO are still mock data so the Home screen has
-// something realistic to render — swap in a real provider when keys exist.
-// Crypto IS live via CoinGecko (see getOverviewLive below).
+// Indices, gold, forex and global equities come from Yahoo; crypto from
+// CoinGecko. The IPO calendar is the one section still on mock data.
 const cryptoService = require('./cryptoService');
 const globalMarketService = require('./globalMarketService');
 const indianMarketService = require('./indianMarketService');
+const geminiService = require('./geminiService');
+const newsService = require('./newsService');
 
 function jitter(base, pct = 2) {
   const delta = base * (pct / 100) * (Math.random() * 2 - 1);
@@ -32,55 +33,83 @@ function getForex() {
   return [{ symbol: 'USDINR', name: 'USD/INR', value: jitter(83.3, 0.5), changePercent: jitter(0.1, 300) }];
 }
 
+// No free source for structured Indian IPO data (dates + price bands) was
+// found — every provider checked puts it behind a paid plan. Rather than list
+// fictional companies ("Mock Tech Ltd") on a finance app, this returns nothing
+// and the client hides the section. IPO *news* still reaches users through the
+// dedicated IPO category in the news feed.
 function getIpoCalendar() {
-  return [
-    { company: 'Mock Tech Ltd', openDate: '2026-08-10', closeDate: '2026-08-12', priceRange: '₹210-220' },
-    { company: 'Sample Finance Corp', openDate: '2026-08-18', closeDate: '2026-08-20', priceRange: '₹95-100' },
-  ];
+  return [];
 }
 
-const INSIGHTS = [
-  'Nifty likely to stay range-bound today amid mixed global cues.',
-  'IT stocks in focus after strong Q1 earnings from major exporters.',
-  'Gold holds steady as investors weigh rate-cut expectations.',
-  'Rupee under mild pressure against the dollar on crude oil prices.',
-  'Banking stocks lead gains on stable asset-quality outlook.',
-];
+// --- AI-generated daily sections ------------------------------------------
+//
+// "In focus" and the daily brief are generated from the day's real headlines,
+// then cached for AI_TTL_MS. They used to be fixed arrays shuffled at random
+// while being labelled AI, which was simply untrue to the user.
+//
+// Caching matters here: without it every Home screen open would spend Gemini
+// quota. One generation per hour serves every user.
+const AI_TTL_MS = 60 * 60 * 1000;
+const aiCache = { inFocus: null, brief: null };
 
-// Canned "AI insight of the day" — free and unlimited (no aiAccess gate, no
-// Gemini call), unlike the real per-article AI features under /ai/*.
-function getInsight() {
-  const insight = INSIGHTS[Math.floor(Math.random() * INSIGHTS.length)];
-  return { insight, generatedAt: new Date().toISOString() };
+function fresh(entry) {
+  return entry && Date.now() - entry.at < AI_TTL_MS ? entry.data : null;
 }
 
-const AI_PICKS_POOL = [
-  { symbol: 'INFY', name: 'Infosys', sentiment: 'bullish', reason: 'Strong deal pipeline and margin expansion in IT services.' },
-  { symbol: 'HDFCBANK', name: 'HDFC Bank', sentiment: 'bullish', reason: 'Stable asset quality and steady credit growth.' },
-  { symbol: 'BTC', name: 'Bitcoin', sentiment: 'neutral', reason: 'Consolidating after recent rally; awaiting fresh catalysts.' },
-  { symbol: 'XAU', name: 'Gold', sentiment: 'bullish', reason: 'Safe-haven demand steady amid global uncertainty.' },
-  { symbol: 'RELIANCE', name: 'Reliance Industries', sentiment: 'neutral', reason: 'Retail and telecom growth offset by refining margin pressure.' },
-];
-
-// Canned "AI Picks" — same idea as getInsight(): free/unlimited, no Gemini
-// call, no aiAccess credit cost. Replace with a real model-driven picks
-// pipeline later.
-function getAiPicks() {
-  const shuffled = [...AI_PICKS_POOL].sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, 3);
+async function headlineBlock() {
+  const articles = await newsService.getFeed({ category: 'business', pageSize: 25 });
+  return articles
+    .slice(0, 25)
+    .map((a, i) => `${i + 1}. ${a.title}`)
+    .join('\n');
 }
 
-// Deterministic-ish mock quote per symbol (same symbol -> same rough base
-// price within a session, since jitter() reseeds each call) — good enough
-// for portfolio P/L display without a real market-data provider.
-function getQuotes(symbols) {
-  return symbols.map((symbol) => {
-    let hash = 0;
-    for (const char of symbol) hash = (hash * 31 + char.charCodeAt(0)) % 100000;
-    const base = 50 + (hash % 4950);
-    return { symbol, price: jitter(base, 3), changePercent: jitter(0.5, 400) };
-  });
+/// Companies/assets in today's news. Empty on failure — the client hides the
+/// section rather than falling back to invented names.
+async function getInFocus() {
+  const cached = fresh(aiCache.inFocus);
+  if (cached) return cached;
+
+  try {
+    const items = await geminiService.inFocus(await headlineBlock());
+    if (items.length) aiCache.inFocus = { at: Date.now(), data: items };
+    return items;
+  } catch (err) {
+    console.error('[marketService] inFocus failed:', err.message);
+    return [];
+  }
 }
+
+/// One-sentence market read. Null on failure so the card is hidden.
+async function getDailyBrief() {
+  const cached = fresh(aiCache.brief);
+  if (cached) return cached;
+
+  try {
+    const insight = await geminiService.marketBrief(await headlineBlock());
+    if (!insight) return null;
+    const data = { insight, generatedAt: new Date().toISOString() };
+    aiCache.brief = { at: Date.now(), data };
+    return data;
+  } catch (err) {
+    console.error('[marketService] marketBrief failed:', err.message);
+    return null;
+  }
+}
+
+// NOTE: getInsight() and getAiPicks() used to return fixed arrays shuffled at
+// random, presented to users as "AI Insight" and "AI Picks". Both are now
+// generated by getDailyBrief()/getInFocus() above from the day's real
+// headlines. Neither has a canned fallback on purpose: if generation fails the
+// section is hidden, rather than showing invented analysis of a market the
+// model never saw.
+
+// NOTE: there used to be a getQuotes() here that derived a "price" from a hash
+// of the ticker's characters. It fed the portfolio and watchlist screens, so
+// users saw invented profit and loss on their own holdings. Portfolio pricing
+// now goes through indianMarketService.getLiveQuotes (real Yahoo data, and
+// symbols that can't be resolved are omitted rather than faked).
 
 // Crypto is the one section backed by a real provider (CoinGecko, no API key
 // needed). Falls back to the mock values if the request fails so the Home
@@ -119,4 +148,4 @@ function getOverview() {
   };
 }
 
-module.exports = { getOverview, getOverviewLive, getInsight, getAiPicks, getQuotes };
+module.exports = { getOverview, getOverviewLive, getInFocus, getDailyBrief };

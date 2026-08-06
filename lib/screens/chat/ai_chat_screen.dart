@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../services/ai_service.dart';
 import '../../services/chat_history_service.dart';
 import '../../theme/app_spacing.dart';
+import '../../widgets/ai_disclaimer.dart';
 import '../../widgets/chat_bubble.dart';
 import '../../widgets/typing_indicator.dart';
 
@@ -109,6 +110,8 @@ class _AiChatScreenState extends State<AiChatScreen> {
                         },
                       ),
           ),
+          // Above the composer so it stays visible as the conversation scrolls.
+          const AiDisclaimer(compact: true),
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(AppSpacing.sm),

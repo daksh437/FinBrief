@@ -10,6 +10,7 @@ import '../../services/share_service.dart';
 import '../../services/squawk_service.dart';
 import '../../theme/app_spacing.dart';
 import '../../utils/time_format.dart';
+import '../../widgets/ai_disclaimer.dart';
 import '../../widgets/ask_ai_bar.dart';
 import '../../widgets/bookmark_button.dart';
 import '../../widgets/impact_card.dart';
@@ -259,6 +260,10 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
             const SizedBox(height: AppSpacing.md),
             ImpactCard(impact: _impact!),
           ],
+
+          // Sits below the summary and impact cards so it covers every piece
+          // of generated content on this screen, not just one of them.
+          if (_summary != null || _impact != null) const AiDisclaimer(),
 
           const SizedBox(height: AppSpacing.lg),
           AskAIBar(onAction: _askAi, activeMode: _explanationMode, loading: _explainLoading),
