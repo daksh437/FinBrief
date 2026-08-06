@@ -21,6 +21,9 @@ const DECISION_PATTERNS = [
   // "is it a good time to buy", "is it worth buying", "good stock to buy"
   /\b(good|right|best|worth|safe)\b[^?]{0,30}\b(time|moment|idea|stock|entry|price)\b[^?]{0,30}\b(buy|sell|invest|enter|exit)\b/i,
   /\bworth\s+(buying|selling|investing|holding)\b/i,
+  // "is now a good time for gold", "right time to enter" — market timing with
+  // no buy/sell verb in the sentence, which the pattern above misses.
+  /\b(good|right|bad|best|wrong)\s+time\s+(to|for)\b/i,
   // "buy or sell", "hold or sell"
   /\b(buy|sell|hold)\s+or\s+(buy|sell|hold)\b/i,
   // "what will the price be", "target price", "how high will it go"

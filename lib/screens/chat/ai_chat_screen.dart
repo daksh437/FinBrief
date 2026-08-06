@@ -6,11 +6,16 @@ import '../../widgets/ai_disclaimer.dart';
 import '../../widgets/chat_bubble.dart';
 import '../../widgets/typing_indicator.dart';
 
+// These are the app's own suggestions, so they have to be questions it will
+// actually answer. "Is now a good time for gold?" used to be here — a
+// market-timing question the assistant now refuses, which would have meant
+// offering a chip and then declining it.
 const _suggestedPrompts = [
   'Explain today\'s Sensex move',
-  'Is now a good time for gold?',
+  'Why is gold in the news?',
   'What is an IPO?',
   'Summarize RBI\'s latest policy',
+  'What does repo rate mean for my EMI?',
 ];
 
 class _ChatMessage {
@@ -135,10 +140,13 @@ class _AiChatScreenState extends State<AiChatScreen> {
   }
 
   Widget _buildSuggestedPrompts(BuildContext context) {
-    return Padding(
+    // Scrollable because the chips wrap to a different number of lines
+    // depending on text size and screen width, and the whole block has to fit
+    // above the keyboard once it opens — which is what overflowed here.
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text('Try asking...', style: Theme.of(context).textTheme.titleLarge, textAlign: TextAlign.center),

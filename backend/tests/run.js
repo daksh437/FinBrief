@@ -127,6 +127,12 @@ async function run() {
     'recommend a stock for long term',
     'give me stock tips',
     'is reliance worth buying',
+    // Market timing with no buy/sell verb in the sentence — this phrasing was
+    // shipped as one of the chat's own suggested prompts before the guard
+    // covered it.
+    'Is now a good time for gold?',
+    'is it the right time to enter',
+    'is this a bad time for IT stocks',
   ]) {
     assert.ok(adviceGuard.seeksAdvice(question), `advice guard must block: "${question}"`);
   }
@@ -141,6 +147,12 @@ async function run() {
     'Explain P/E ratio',
     'what is the share price of TCS',
     'why are metal stocks in news',
+    // The chat screen's own suggested prompts. If the guard ever starts
+    // refusing one of these, the app offers a chip and then declines it.
+    "Explain today's Sensex move",
+    'Why is gold in the news?',
+    "Summarize RBI's latest policy",
+    'What does repo rate mean for my EMI?',
   ]) {
     assert.ok(!adviceGuard.seeksAdvice(question), `advice guard must NOT block: "${question}"`);
   }
