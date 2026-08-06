@@ -45,6 +45,7 @@ Name is optional because it only exists when the user chooses Google Sign-In.
 | Data type | Collected | Shared | Ephemeral | Required? | Purposes |
 |---|---|---|---|---|---|
 | Purchase history | Yes | No | No | Optional | App functionality, Account management |
+| Credit info | No | — | — | — | — |
 | Other financial info | Yes | No | No | Optional | App functionality, Personalisation |
 
 "Other financial info" covers portfolio holdings the user types in (symbol,
@@ -120,9 +121,24 @@ These are blockers, in the order they will stop you.
    (`ca-app-pub-3940256099942544~3347511713`). Ads earn nothing with it, and
    shipping a test ID risks a policy strike.
 
-3. **Play Console billing products.** The product IDs in
-   `lib/config/monetization_config.dart` must exist in the console, or purchases
-   fail at runtime.
+3. **Play Console billing products.** Create ONE subscription with three base
+   plans — not three separate products, so a user can change period without
+   cancelling:
+
+   | Field | Value |
+   |---|---|
+   | Subscription ID | `finbrief_premium` |
+   | Base plan `monthly` | P1M, ₹199 |
+   | └ Offer on `monthly` | ₹49, first billing period, **new subscribers only** |
+   | Base plan `six-month` | P6M, ₹899 |
+   | Base plan `yearly` | P1Y, ₹999 |
+
+   Then grant the backend's service account **"View financial data"** under
+   Play Console → Setup → API access, or purchase verification fails and nobody
+   gets Premium after paying.
+
+   The ₹49 is an *introductory offer* attached to the monthly base plan, not a
+   separate product — Play then enforces one-per-user by itself.
 
 4. **Legal review, specifically SEBI.** The app comments on named securities to
    Indian users. The Terms state plainly that nothing is investment advice and

@@ -11,9 +11,10 @@ async function bootstrap(req, res) {
     const profile = {
       uid: req.user.uid,
       email: req.user.email || null,
+      // No trial: new users start on free and are offered a ₹49 first month
+      // instead. A free trial spends AI quota on people who were never going
+      // to pay; a paid first month leaves a card on file that renews.
       plan: 'free',
-      trialStartedAt: Date.now(),
-      creditBalance: 0,
       createdAt: Date.now(),
     };
     await userRef.set(profile);

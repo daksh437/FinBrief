@@ -4,14 +4,26 @@ const PACKAGE_NAME = process.env.ANDROID_PACKAGE_NAME;
 const SERVICE_ACCOUNT_JSON = process.env.FIREBASE_SERVICE_ACCOUNT; // reuse the same service account
 const MOCK_MODE = !PACKAGE_NAME || !SERVICE_ACCOUNT_JSON;
 
-// Placeholder SKU -> credit-count map. Replace with the real Play Console
-// product ids and amounts once the credit-pack pricing is finalized.
-const CREDIT_PACKS = {
-  credits_pack_small: 50,
-  credits_pack_large: 150,
+// One subscription, three base plans. Play models it this way (rather than
+// three separate products) so a user can switch period without cancelling, and
+// so the ₹49 introductory offer can hang off the monthly plan and be limited
+// to first-time subscribers automatically.
+//
+// Consumable credit packs were removed: two ways to pay on the same paywall
+// split the decision and lowered conversion, and a pack buyer spends less over
+// a year than a subscriber.
+const SUBSCRIPTION_ID = 'finbrief_premium';
+
+const BASE_PLANS = {
+  monthly: { id: 'monthly', period: 'P1M', priceInr: 199 },
+  sixMonth: { id: 'six-month', period: 'P6M', priceInr: 899 },
+  yearly: { id: 'yearly', period: 'P1Y', priceInr: 999 },
 };
 
-const SUBSCRIPTION_PRODUCT_IDS = new Set(['premium_monthly']);
+// Any of these arriving from the client is treated as a subscription purchase.
+// `premium_monthly` stays recognised so installs from before the change can
+// still be validated instead of silently losing their subscription.
+const SUBSCRIPTION_PRODUCT_IDS = new Set([SUBSCRIPTION_ID, 'premium_monthly']);
 
 let androidPublisher = null;
 function getAndroidPublisher() {
@@ -50,4 +62,4 @@ async function verifyPurchase({ productId, purchaseToken, isSubscription }) {
   return { valid: purchased, raw: res.data };
 }
 
-module.exports = { verifyPurchase, CREDIT_PACKS, SUBSCRIPTION_PRODUCT_IDS, MOCK_MODE };
+module.exports = { verifyPurchase, SUBSCRIPTION_ID, BASE_PLANS, SUBSCRIPTION_PRODUCT_IDS, MOCK_MODE };

@@ -1,23 +1,29 @@
 const { db } = require('../config/firebaseAdmin');
 
-const TRIAL_DAYS = 7;
-const DAILY_CREDITS_FREE = Number(process.env.DAILY_CREDITS_FREE || 3);
+// Two tiers, no trial and no purchasable credits.
+//
+// The free trial was dropped in favour of a ₹49 first month: a free trial
+// spends Gemini quota on people who were never going to pay, while someone who
+// has already paid ₹49 has a card on file and renews by default.
+//
+// PREMIUM IS NOT LITERALLY UNLIMITED. At ₹999/year the net is about ₹85 a
+// month, and 100 AI calls a day would cost more than that in Gemini usage. A
+// real user does 10-15, so the cap is invisible to them but stops one runaway
+// account (or a script) from turning a subscriber into a loss. The Terms say
+// "unlimited, subject to fair use" for this reason.
+const DAILY_LIMIT_FREE = Number(process.env.DAILY_LIMIT_FREE || 5);
+const DAILY_LIMIT_PREMIUM = Number(process.env.DAILY_LIMIT_PREMIUM || 100);
 const IDEMPOTENCY_TTL_MS = 48 * 60 * 60 * 1000;
 
 function todayUtcKey() {
   return new Date().toISOString().slice(0, 10); // YYYY-MM-DD, resets at midnight UTC
 }
 
-function isInTrial(user) {
-  if (!user.trialStartedAt) return false;
-  const started = user.trialStartedAt.toDate ? user.trialStartedAt.toDate() : new Date(user.trialStartedAt);
-  const ageMs = Date.now() - started.getTime();
-  return ageMs < TRIAL_DAYS * 24 * 60 * 60 * 1000;
-}
+const limitFor = (user) => (user.plan === 'premium' ? DAILY_LIMIT_PREMIUM : DAILY_LIMIT_FREE);
 
-// Gate for every /ai/* route. Enforces trial / free-daily-credit / premium-unlimited
-// access server-side from Firestore. Client-side counters are advisory only —
-// never trust them for the actual limit check.
+// Gate for every /ai/* route. Enforces the daily limit server-side from
+// Firestore. Client-side counters are advisory only — never trust them for the
+// actual check.
 async function aiAccess(req, res, next) {
   if (process.env.DEV_SKIP_LIMITS === 'true' && process.env.NODE_ENV !== 'production') {
     return next();
@@ -44,23 +50,25 @@ async function aiAccess(req, res, next) {
     const userSnap = await userRef.get();
     const user = userSnap.exists ? userSnap.data() : {};
 
-    if (user.plan === 'premium') {
-      return next();
-    }
-
-    if (isInTrial(user)) {
-      return next();
-    }
-
+    const limit = limitFor(user);
     const day = todayUtcKey();
 
+    // Counting inside a transaction so two devices can't both slip through on
+    // the last remaining call of the day.
     await db.runTransaction(async (tx) => {
       const snap = await tx.get(userRef);
       const usage = (snap.exists && snap.data().aiUsage) || {};
       const usedToday = usage.date === day ? usage.count || 0 : 0;
 
-      if (usedToday >= DAILY_CREDITS_FREE) {
-        throw Object.assign(new Error('INSUFFICIENT_CREDITS'), { code: 'INSUFFICIENT_CREDITS' });
+      if (usedToday >= limit) {
+        throw Object.assign(new Error('DAILY_LIMIT_REACHED'), {
+          code: 'DAILY_LIMIT_REACHED',
+          // Carried on the error so the response can tell a free user (who
+          // should see an upgrade prompt) from a premium user who has hit the
+          // fair-use ceiling and must not be asked to buy anything.
+          plan: user.plan === 'premium' ? 'premium' : 'free',
+          limit,
+        });
       }
 
       tx.set(userRef, { aiUsage: { date: day, count: usedToday + 1 } }, { merge: true });
@@ -68,11 +76,14 @@ async function aiAccess(req, res, next) {
 
     next();
   } catch (err) {
-    if (err.code === 'INSUFFICIENT_CREDITS') {
+    if (err.code === 'DAILY_LIMIT_REACHED') {
       return res.status(200).json({
         success: false,
+        // Kept as INSUFFICIENT_CREDITS so older installs still show their
+        // upgrade prompt instead of a generic failure.
         error: 'INSUFFICIENT_CREDITS',
-        dailyLimit: DAILY_CREDITS_FREE,
+        plan: err.plan,
+        dailyLimit: err.limit,
       });
     }
     console.error('aiAccess middleware error:', err);
@@ -97,4 +108,4 @@ function withIdempotency(handler) {
   };
 }
 
-module.exports = { aiAccess, withIdempotency, DAILY_CREDITS_FREE, TRIAL_DAYS };
+module.exports = { aiAccess, withIdempotency, DAILY_LIMIT_FREE, DAILY_LIMIT_PREMIUM };

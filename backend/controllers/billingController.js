@@ -1,5 +1,6 @@
 const billingService = require('../services/billingService');
-const { db, admin } = require('../config/firebaseAdmin');
+const { db } = require('../config/firebaseAdmin');
+const { DAILY_LIMIT_FREE, DAILY_LIMIT_PREMIUM } = require('../middleware/aiAccess');
 
 async function verify(req, res) {
   const { productId, purchaseToken } = req.body;
@@ -14,19 +15,21 @@ async function verify(req, res) {
     return res.status(200).json({ success: false, error: 'PURCHASE_NOT_VALID' });
   }
 
-  const userRef = db.collection('users').doc(req.user.uid);
-  const creditsGranted = billingService.CREDIT_PACKS[productId] || 0;
-
-  if (isSubscription) {
-    await userRef.set({ plan: 'premium', premiumSince: Date.now() }, { merge: true });
-  } else if (creditsGranted) {
-    await userRef.set({ creditBalance: admin.firestore.FieldValue.increment(creditsGranted) }, { merge: true });
+  // Subscriptions are the only thing sold now, so anything else reaching here
+  // is either a stale client or someone probing the endpoint.
+  if (!isSubscription) {
+    return res.status(400).json({ success: false, error: 'UNKNOWN_PRODUCT' });
   }
+
+  const userRef = db.collection('users').doc(req.user.uid);
+  await userRef.set({ plan: 'premium', premiumSince: Date.now() }, { merge: true });
 
   await userRef.collection('purchases').add({
     productId,
-    type: isSubscription ? 'subscription' : 'credits',
-    creditsGranted: isSubscription ? null : creditsGranted,
+    type: 'subscription',
+    // Which base plan was bought, so renewals and churn can be told apart per
+    // period later.
+    basePlan: req.body.basePlan || null,
     createdAt: Date.now(),
   });
 
@@ -40,8 +43,11 @@ async function status(req, res) {
     success: true,
     data: {
       plan: data.plan || 'free',
-      creditBalance: data.creditBalance || 0,
-      trialStartedAt: data.trialStartedAt || null,
+      premiumSince: data.premiumSince || null,
+      dailyLimit: data.plan === 'premium' ? DAILY_LIMIT_PREMIUM : DAILY_LIMIT_FREE,
+      usedToday: data.aiUsage && data.aiUsage.date === new Date().toISOString().slice(0, 10)
+          ? data.aiUsage.count || 0
+          : 0,
     },
   });
 }

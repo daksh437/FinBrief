@@ -1,4 +1,5 @@
 const { db } = require('../config/firebaseAdmin');
+const { DAILY_LIMIT_FREE, DAILY_LIMIT_PREMIUM } = require('../middleware/aiAccess');
 
 // Server-driven client config (v11 `app_config`). Values live in a single
 // app_config/client document so they can be changed without shipping an app
@@ -6,8 +7,8 @@ const { db } = require('../config/firebaseAdmin');
 const DEFAULTS = {
   minSupportedVersion: '1.0.0',
   forceUpdate: false,
-  dailyCreditsFree: Number(process.env.DAILY_CREDITS_FREE || 3),
-  trialDays: 7,
+  dailyLimitFree: DAILY_LIMIT_FREE,
+  dailyLimitPremium: DAILY_LIMIT_PREMIUM,
   features: {
     aiChat: true,
     voiceSummary: true,

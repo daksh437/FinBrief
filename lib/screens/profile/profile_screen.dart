@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../config/monetization_config.dart';
 import '../../providers/user_provider.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_spacing.dart';
@@ -36,15 +35,22 @@ class ProfileScreen extends StatelessWidget {
                     children: [
                       Text('AI Usage', style: Theme.of(context).textTheme.titleSmall),
                       const SizedBox(height: AppSpacing.sm),
-                      if (profile.isPremium)
+                      // Premium's fair-use ceiling is deliberately not shown as
+                      // a countdown — it exists to stop runaway usage, not to
+                      // ration a paying subscriber.
+                      if (!profile.showsUsageCounter)
                         const Text('Unlimited (Premium)')
-                      else if (profile.isInTrial)
-                        const Text('Unlimited (Trial)')
-                      else
-                        Text('${profile.aiUsedToday} / ${MonetizationConfig.dailyCreditsFree} used today'),
-                      if (profile.creditBalance > 0) ...[
-                        const SizedBox(height: 4),
-                        Text('Credit balance: ${profile.creditBalance}'),
+                      else ...[
+                        Text('${profile.aiUsedToday} / ${profile.dailyLimit} used today'),
+                        const SizedBox(height: AppSpacing.sm),
+                        LinearProgressIndicator(
+                          value: profile.dailyLimit == 0 ? 0 : profile.aiUsedToday / profile.dailyLimit,
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        Text(
+                          'Resets at midnight UTC. Go Premium to remove the limit.',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
                       ],
                     ],
                   ),
