@@ -9,5 +9,6 @@ router.use(requireAuth);
 
 router.post('/bootstrap', asyncHandler(authController.bootstrap));
 router.get('/profile', asyncHandler(authController.profile));
+router.delete('/account', asyncHandler(authController.deleteAccount));
 
 module.exports = router;

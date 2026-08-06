@@ -79,8 +79,71 @@ class ProfileScreen extends StatelessWidget {
             title: 'Settings',
             onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SettingsScreen())),
           ),
+          const Divider(),
+          // Google Play requires apps that create accounts to offer deletion
+          // from inside the app. Kept visually distinct from the tiles above so
+          // it can't be tapped by mistake.
+          SettingsTile(
+            icon: Icons.delete_forever_outlined,
+            title: 'Delete Account',
+            iconColor: Theme.of(context).colorScheme.error,
+            titleColor: Theme.of(context).colorScheme.error,
+            trailing: const SizedBox.shrink(),
+            onTap: () => _confirmDelete(context),
+          ),
+          const SizedBox(height: AppSpacing.lg),
         ],
       ),
     );
+  }
+
+  Future<void> _confirmDelete(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete account?'),
+        content: const Text(
+          'This permanently deletes your account, along with your bookmarks, '
+          'watchlist and portfolio. It cannot be undone.\n\n'
+          'Any active subscription must be cancelled separately in Google Play.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(dialogContext).colorScheme.error,
+            ),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    // Deletion touches several collections, so it can take a moment — block
+    // interaction rather than leave the screen looking idle.
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      await AuthService.instance.deleteAccount();
+      // The auth stream drops the app back to the login screen on its own;
+      // just clear the spinner.
+      if (context.mounted) Navigator.of(context).pop();
+    } catch (e) {
+      if (!context.mounted) return;
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e is AccountDeletionFailed ? e.message : 'Could not delete your account.')),
+      );
+    }
   }
 }

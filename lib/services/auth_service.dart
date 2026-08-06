@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../config/google_config.dart';
+import 'api_service.dart';
 
 class GoogleSignInCancelled implements Exception {}
 
@@ -48,4 +49,38 @@ class AuthService {
     }
     await _auth.signOut();
   }
+
+  /// Permanently deletes the account and all its data.
+  ///
+  /// The backend does the work: it needs the Admin SDK to purge Firestore
+  /// documents the client can't touch, and to remove the Auth user itself.
+  /// Once that succeeds the local session is cleared, which drops the app back
+  /// to the login screen through the usual auth stream.
+  ///
+  /// Throws [AccountDeletionFailed] with a readable message on failure — the
+  /// caller is a destructive confirmation dialog and must not fail silently.
+  Future<void> deleteAccount() async {
+    final res = await ApiService.instance.delete('/auth/account');
+    if (res['success'] != true) {
+      throw AccountDeletionFailed(
+        res['message'] as String? ?? 'Could not delete your account. Please try again.',
+      );
+    }
+
+    try {
+      await _googleSignIn.signOut();
+    } catch (_) {
+      // The account is already gone server-side; a failed Google sign-out
+      // shouldn't surface as a deletion error.
+    }
+    await _auth.signOut();
+  }
+}
+
+class AccountDeletionFailed implements Exception {
+  AccountDeletionFailed(this.message);
+  final String message;
+
+  @override
+  String toString() => message;
 }
