@@ -8,12 +8,20 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/user_provider.dart';
-import 'screens/splash_screen.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
+import 'screens/startup_gate.dart';
 import 'theme/app_theme.dart';
 import 'widgets/connectivity_banner.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  final binding = WidgetsFlutterBinding.ensureInitialized();
+
+  // Hold the native splash through Firebase init and the onboarding check, so
+  // startup goes splash -> real screen with nothing in between. StartupGate
+  // removes it. Without this the splash disappears the moment Flutter renders
+  // its first frame, which is before there is anything worth showing.
+  FlutterNativeSplash.preserve(widgetsBinding: binding);
+
   await Firebase.initializeApp();
 
   // Route both Flutter framework errors and uncaught async/platform errors
@@ -49,7 +57,7 @@ class FinBriefApp extends StatelessWidget {
             theme: AppTheme.light(),
             darkTheme: AppTheme.dark(),
             themeMode: themeProvider.mode,
-            home: const SplashScreen(),
+            home: const StartupGate(),
             builder: (context, child) => ConnectivityBanner(child: child!),
           );
         },

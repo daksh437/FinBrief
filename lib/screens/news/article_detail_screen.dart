@@ -11,6 +11,7 @@ import '../../services/squawk_service.dart';
 import '../../theme/app_spacing.dart';
 import '../../utils/time_format.dart';
 import '../../widgets/ai_disclaimer.dart';
+import '../../widgets/ad_banner.dart';
 import '../../widgets/ask_ai_bar.dart';
 import '../../widgets/bookmark_button.dart';
 import '../../widgets/impact_card.dart';
@@ -187,6 +188,10 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
           ),
         ],
       ),
+      // Anchored to the bottom rather than placed in the scroll: it stays away
+      // from the AI action buttons, which is what keeps accidental clicks (and
+      // the invalid-traffic strikes that follow) from happening.
+      bottomNavigationBar: const AdBanner(),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.md),
         children: [

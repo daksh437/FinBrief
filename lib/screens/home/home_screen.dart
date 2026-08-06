@@ -8,7 +8,6 @@ import '../../models/market_overview.dart';
 import '../../models/news_article.dart';
 import '../../services/market_service.dart';
 import '../../services/news_service.dart';
-import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../widgets/ai_disclaimer.dart';
 import '../../widgets/ai_insight_card.dart';
@@ -18,6 +17,7 @@ import '../../widgets/category_chip.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/loading_skeleton.dart';
+import '../../widgets/app_logo.dart';
 import '../../widgets/market_tile.dart';
 import '../../widgets/news_card.dart';
 import '../chat/ai_chat_screen.dart';
@@ -185,7 +185,7 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: Row(
           children: [
-            const Icon(Icons.insights_rounded, color: AppColors.primary),
+            const AppLogo(size: 28),
             const SizedBox(width: AppSpacing.sm),
             Text('FinBrief', style: Theme.of(context).textTheme.titleLarge),
           ],
