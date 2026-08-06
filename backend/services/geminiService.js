@@ -51,21 +51,22 @@ async function summarizeStructured(text) {
   };
 }
 
+/// What a story concerns and which sectors it touches.
+///
+/// No direction is returned. A `sentiment` field used to be part of this, but
+/// attaching bullish/bearish to a named security reads as a call regardless of
+/// the wording around it.
 async function analyzeImpact(text) {
   if (MOCK_MODE) {
     return {
-      sentiment: 'neutral',
-      confidence: 0.5,
       reason: 'Mock mode — set GEMINI_API_KEY for real analysis.',
       affectedSectors: ['IT', 'Banking'],
     };
   }
 
   const raw = await engine.run('impact', [text]);
-  const parsed = parseJson(raw, { sentiment: 'neutral', confidence: 0, reason: raw });
+  const parsed = parseJson(raw, { reason: raw });
   return {
-    sentiment: parsed.sentiment || 'neutral',
-    confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0,
     reason: parsed.reason || raw,
     affectedSectors: Array.isArray(parsed.affectedSectors) ? parsed.affectedSectors.map(String) : [],
   };
@@ -120,7 +121,6 @@ async function inFocus(headlines) {
       .map((p) => ({
         symbol: String(p.symbol).toUpperCase(),
         name: String(p.name),
-        sentiment: ['bullish', 'bearish', 'neutral'].includes(p.sentiment) ? p.sentiment : 'neutral',
         reason: String(p.reason),
       }));
   } catch {

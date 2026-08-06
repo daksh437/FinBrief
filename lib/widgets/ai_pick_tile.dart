@@ -1,19 +1,13 @@
 import 'package:flutter/material.dart';
 import '../models/ai_pick.dart';
-import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 
-Color _sentimentColor(String sentiment) {
-  switch (sentiment) {
-    case 'bullish':
-      return AppColors.success;
-    case 'bearish':
-      return AppColors.danger;
-    default:
-      return AppColors.secondary;
-  }
-}
-
+/// A company the day's news is about.
+///
+/// The coloured BULLISH / BEARISH chip that used to sit here is gone. A green
+/// or red badge next to a ticker is read as a call no matter what the caption
+/// says — see [AiPick]. The ticker is shown instead, which is information
+/// rather than a view.
 class AiPickTile extends StatelessWidget {
   final AiPick pick;
 
@@ -21,43 +15,34 @@ class AiPickTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = _sentimentColor(pick.sentiment);
+    final theme = Theme.of(context);
 
     return Container(
       width: 220,
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerLow,
+        color: theme.colorScheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  pick.name,
-                  style: Theme.of(context).textTheme.titleSmall,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(6)),
-                child: Text(
-                  pick.sentiment.toUpperCase(),
-                  style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
+          Text(
+            pick.name,
+            style: theme.textTheme.titleSmall,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
+          Text(
+            pick.symbol,
+            style: theme.textTheme.labelSmall?.copyWith(color: theme.hintColor),
+          ),
+          const SizedBox(height: 6),
           Text(
             pick.reason,
-            style: Theme.of(context).textTheme.bodySmall,
-            maxLines: 2,
+            style: theme.textTheme.bodySmall,
+            maxLines: 3,
             overflow: TextOverflow.ellipsis,
           ),
         ],

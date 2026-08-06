@@ -38,30 +38,43 @@ const PROMPTS = {
     build: (text) => `Translate this financial news to Hindi.\n\nText:\n${text}`,
   },
 
+  // Explains WHAT a story concerns, not which way it should move a price.
+  //
+  // This used to return a bullish/bearish/neutral label. Attaching a direction
+  // to a named security is what turns commentary into something that reads as
+  // a recommendation, which is the line SEBI's investment-adviser and
+  // research-analyst regulations sit on. Describing the story and the parts of
+  // the market it touches keeps the useful half without the call.
   impact: {
-    version: 'v2',
-    system: `${SYSTEM_BASE} You assess how news is likely to move markets.`,
+    version: 'v3',
+    system:
+      `${SYSTEM_BASE} You explain which parts of the market a story concerns and why. ` +
+      'You never say whether something will rise or fall, never label news as positive ' +
+      'or negative for a security, and never predict prices.',
     output:
-      'Respond as strict JSON with keys "sentiment" (one of "bullish", "bearish", "neutral"), ' +
-      '"confidence" (0-1 number), "reason" (one sentence), and "affectedSectors" ' +
-      '(array of 1-4 short sector names, e.g. "IT", "Banking", "Energy").',
-    build: (text) => `Analyse the market impact of this financial news.\n\nText:\n${text}`,
+      'Respond as strict JSON with keys "reason" (one or two sentences explaining what ' +
+      'the news concerns, in factual terms), and "affectedSectors" (array of 1-4 short ' +
+      'sector names, e.g. "IT", "Banking", "Energy").',
+    build: (text) => `Which parts of the market does this financial news concern, and why?\n\nText:\n${text}`,
   },
 
   // "In focus today" — grounded in the day's actual headlines rather than a
-  // stored list. Deliberately framed as observation, not recommendation: the
-  // sentiment describes what the news implies, and the prompt forbids buy/sell
-  // language, since naming stocks with a call attached is advice.
+  // stored list, and deliberately observation rather than recommendation.
+  //
+  // The bullish/bearish label was removed: naming a security and attaching a
+  // direction to it is the thing that reads as a call, however it is worded.
+  // What is left — which companies the news is about, and what the news says —
+  // is reporting.
   inFocus: {
-    version: 'v1',
+    version: 'v2',
     system:
       `${SYSTEM_BASE} You identify which companies or assets are in the news today and why. ` +
-      'You never recommend buying, selling or holding anything, and never predict prices.',
+      'You never recommend buying, selling or holding anything, never say whether ' +
+      'something will rise or fall, and never predict prices.',
     output:
       'Respond as strict JSON: an array of 3 objects with keys "symbol" (NSE ticker or ' +
-      'asset code, uppercase), "name" (company or asset name), "sentiment" (one of ' +
-      '"bullish", "bearish", "neutral" — describing what the news implies for it, not a ' +
-      'recommendation), and "reason" (one short sentence citing the news). ' +
+      'asset code, uppercase), "name" (company or asset name), and "reason" (one short ' +
+      'factual sentence stating what the news says about it). ' +
       'Only include names that actually appear in the headlines provided.',
     build: (headlines) =>
       `From these headlines, pick the 3 companies or assets most in focus today.\n\n` +

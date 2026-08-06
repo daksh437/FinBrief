@@ -307,9 +307,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   // attached reads as a recommendation, which this is not.
                   _sectionTitle('In Focus Today'),
                   SizedBox(
-                    // Name/sentiment row + 2-line reason — same tight-fit risk
-                    // as the market row above.
-                    height: 128,
+                    // Name + ticker + 3-line reason. Taller than it looks like
+                    // it needs to be: the reason is model-generated, so it runs
+                    // long more often than a fixed string would.
+                    height: 140,
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
                       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),

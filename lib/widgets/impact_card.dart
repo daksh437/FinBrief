@@ -1,30 +1,14 @@
 import 'package:flutter/material.dart';
 import '../models/ai_summary.dart';
-import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 
-Color _sentimentColor(String sentiment) {
-  switch (sentiment) {
-    case 'bullish':
-      return AppColors.success;
-    case 'bearish':
-      return AppColors.danger;
-    default:
-      return AppColors.secondary;
-  }
-}
-
-IconData _sentimentIcon(String sentiment) {
-  switch (sentiment) {
-    case 'bullish':
-      return Icons.trending_up;
-    case 'bearish':
-      return Icons.trending_down;
-    default:
-      return Icons.trending_flat;
-  }
-}
-
+/// What a story concerns, and which parts of the market it touches.
+///
+/// The green/red BULLISH/BEARISH chip and its trending arrow are gone, along
+/// with the confidence percentage that made a generated opinion look measured.
+/// A direction attached to a named security reads as a call regardless of the
+/// surrounding wording — see [MarketImpact]. The sector chips and the plain
+/// explanation carry the useful half.
 class ImpactCard extends StatelessWidget {
   final MarketImpact impact;
 
@@ -32,7 +16,7 @@ class ImpactCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = _sentimentColor(impact.sentiment);
+    final theme = Theme.of(context);
 
     return Card(
       child: Padding(
@@ -40,37 +24,14 @@ class ImpactCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Text('Market Impact', style: Theme.of(context).textTheme.titleSmall),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(_sentimentIcon(impact.sentiment), size: 13, color: color),
-                      const SizedBox(width: 4),
-                      Text(
-                        impact.sentiment.toUpperCase(),
-                        style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+            Text('What this affects', style: theme.textTheme.titleSmall),
             if (impact.reason.isNotEmpty) ...[
               const SizedBox(height: AppSpacing.sm),
-              Text(impact.reason, style: Theme.of(context).textTheme.bodyMedium),
+              Text(impact.reason, style: theme.textTheme.bodyMedium),
             ],
             if (impact.affectedSectors.isNotEmpty) ...[
               const SizedBox(height: AppSpacing.md),
-              Text('Affected sectors', style: Theme.of(context).textTheme.titleSmall),
+              Text('Sectors in the story', style: theme.textTheme.titleSmall),
               const SizedBox(height: AppSpacing.sm),
               Wrap(
                 spacing: AppSpacing.sm,
@@ -82,13 +43,6 @@ class ImpactCard extends StatelessWidget {
                           materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ))
                     .toList(),
-              ),
-            ],
-            if (impact.confidence > 0) ...[
-              const SizedBox(height: AppSpacing.sm),
-              Text(
-                'Confidence: ${(impact.confidence * 100).clamp(0, 100).round()}%',
-                style: Theme.of(context).textTheme.bodySmall,
               ),
             ],
           ],
