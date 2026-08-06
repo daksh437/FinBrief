@@ -82,10 +82,25 @@ ${doc.sections.map((s) => `<h2>${escape(s.heading)}</h2>\n${paragraphs(s.body)}`
 </html>`;
 }
 
+// Aliases as well as the canonical path. Play checks whatever URL was typed
+// into the console, and a policy that 404s because someone wrote
+// "/privacy-policy" instead of "/privacy" is a rejection over a typo.
+const ALIASES = {
+  privacy: ['privacy.html', 'privacy-policy', 'privacypolicy'],
+  terms: ['terms.html', 'terms-of-service', 'tos'],
+  'delete-account': ['delete-account.html', 'account-deletion', 'delete'],
+};
+
 for (const name of Object.keys(DOCS)) {
-  router.get(`/${name}`, (req, res) => {
-    res.type('html').send(render(load(name)));
-  });
+  const handler = (req, res) => {
+    // Explicit charset and a long cache: the crawler that validates this URL
+    // should get a fast, unambiguous response even if the app is busy.
+    res.set('Cache-Control', 'public, max-age=3600');
+    res.type('text/html; charset=utf-8').send(render(load(name)));
+  };
+
+  router.get(`/${name}`, handler);
+  for (const alias of ALIASES[name] || []) router.get(`/${alias}`, handler);
 }
 
 module.exports = router;
