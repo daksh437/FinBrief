@@ -14,7 +14,14 @@ const path = require('path');
 // would not satisfy the requirement.
 const router = express.Router();
 
-const DOCS = { privacy: 'privacy.json', terms: 'terms.json' };
+// Google Play asks for the account-deletion URL separately from the privacy
+// policy, and it must be reachable without installing the app — a reviewer
+// checks it before approving.
+const DOCS = {
+  privacy: 'privacy.json',
+  terms: 'terms.json',
+  'delete-account': 'delete-account.json',
+};
 const cache = new Map();
 
 function load(name) {

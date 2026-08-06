@@ -1,0 +1,27 @@
+{
+  "title": "Delete Your Account",
+  "lastUpdated": "6 August 2026",
+  "intro": "This page explains how to delete your FinBrief account and what happens to your data. You can do it yourself from inside the app in under a minute.",
+  "sections": [
+    {
+      "heading": "Delete it from the app",
+      "body": "1. Open FinBrief and sign in.\n2. Go to the Profile tab.\n3. Scroll to the bottom and tap \"Delete Account\".\n4. Confirm on the dialog that appears.\n\nDeletion happens immediately and cannot be undone."
+    },
+    {
+      "heading": "If you cannot sign in",
+      "body": "Email us from the address on the account and we will delete it for you. Requests are actioned within 30 days.\n\nContact: instaflow38@gmail.com\n\nPlease include the email address you registered with, so we can identify the right account."
+    },
+    {
+      "heading": "What is deleted",
+      "body": "Your account and login credentials.\n\nYour profile, plan and credit balance.\n\nYour bookmarks, watchlist and portfolio holdings.\n\nYour saved notifications, purchase records and submitted feedback.\n\nYour AI request history.\n\nAll of this is removed permanently and cannot be restored."
+    },
+    {
+      "heading": "What is kept, and for how long",
+      "body": "Anonymous, aggregated analytics and crash reports that are not linked to your account may be retained by Google Analytics and Crashlytics under their own retention periods.\n\nCached news articles are not personal data and are deleted automatically after 30 days regardless of account activity.\n\nWhere we are required by law to keep a record of a transaction, that record is kept for as long as the law requires and for no other purpose."
+    },
+    {
+      "heading": "Subscriptions",
+      "body": "Deleting your FinBrief account does NOT cancel a Google Play subscription. Cancel it separately in the Google Play Store under Payments & subscriptions, otherwise billing continues.\n\nRefunds are handled by Google Play under their policy, not by us."
+    }
+  ]
+}
