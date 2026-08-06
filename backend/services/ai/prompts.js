@@ -29,13 +29,21 @@ const PROMPTS = {
     build: (text) => `Summarise this financial news in 2-3 short sentences.\n\nText:\n${text}`,
   },
 
+  // Hindi covers roughly 40% of India. The states with the deepest retail
+  // equity participation — Gujarat, Maharashtra — read Gujarati and Marathi,
+  // and no large Indian finance app offers either. The language is a parameter
+  // rather than baked into the prompt for that reason; the cost of supporting
+  // one more is a line in LANGUAGES.
   translate: {
-    version: 'v2',
-    system: `${SYSTEM_BASE} You translate financial news into simple, conversational Hindi.`,
-    output:
-      'Return only the Hindi translation. Keep numbers, tickers, company names and ' +
-      'financial terms in their original form where no natural Hindi equivalent exists.',
-    build: (text) => `Translate this financial news to Hindi.\n\nText:\n${text}`,
+    version: 'v3',
+    system: (language) =>
+      `${SYSTEM_BASE} You translate financial news into simple, conversational ${language}, ` +
+      'the way a person would explain it to a friend rather than the way a textbook would.',
+    output: (language) =>
+      `Return only the ${language} translation. Keep numbers, tickers, company names and ` +
+      `financial terms in their original form where no natural ${language} equivalent exists — ` +
+      'a reader who knows the market should still recognise them.',
+    build: (text, language) => `Translate this financial news to ${language}.\n\nText:\n${text}`,
   },
 
   // Explains WHAT a story concerns, not which way it should move a price.
@@ -106,7 +114,9 @@ const PROMPTS = {
         beginner:
           'Explain this to a complete beginner who knows nothing about markets. Avoid jargon ' +
           'and define any necessary terms.',
-        hindi: 'Explain this in simple, conversational Hindi for a beginner investor.',
+        // A 'hindi' mode used to sit here. Reading language is now a user
+        // preference handled by the translate task, which covers ten
+        // languages — not a fourth kind of explanation.
       };
       return `${asks[mode]}\n\nText:\n${text}`;
     },
@@ -137,8 +147,13 @@ function compose(taskName, args = [], { fallback = false } = {}) {
   const task = PROMPTS[taskName];
   if (!task) throw Object.assign(new Error(`Unknown prompt task: ${taskName}`), { code: 'UNKNOWN_TASK' });
 
-  const system = fallback ? FALLBACK.system : task.system;
-  const output = fallback ? FALLBACK.output : task.output;
+  // A task's system/output may be a function of the same args as build() —
+  // translate needs the target language in all three, and hardcoding it into
+  // the string is what limited the app to Hindi.
+  const resolve = (part) => (typeof part === 'function' ? part(...args.slice(1)) : part);
+
+  const system = fallback ? FALLBACK.system : resolve(task.system);
+  const output = fallback ? FALLBACK.output : resolve(task.output);
   const user = task.build(...args);
 
   return `${system}\n\n${output}\n\n${user}`;

@@ -1,4 +1,5 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import '../config/app_languages.dart';
 
 // Local, device-only flags for one-time setup flows (onboarding intro,
 // language/interest pickers). Not synced to the backend — reinstalling the
@@ -27,14 +28,29 @@ class OnboardingPrefs {
     return prefs.getBool(_languageSelectedKey) ?? false;
   }
 
+  /// The reading language, as an ISO code ('hi', 'gu', 'mr', …).
+  ///
+  /// Earlier builds stored display names ("English", "Hindi", "Both") because
+  /// Hindi was the only option. Those values are translated here rather than
+  /// left to fail: an existing install must not lose its choice on upgrade.
   static Future<String> getLanguage() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_selectedLanguageKey) ?? 'English';
+    final stored = prefs.getString(_selectedLanguageKey);
+    if (stored == null) return AppLanguages.defaultCode;
+
+    const legacy = {'english': 'en', 'hindi': 'hi', 'both': 'hi'};
+    final migrated = legacy[stored.toLowerCase()];
+    if (migrated != null) {
+      await prefs.setString(_selectedLanguageKey, migrated);
+      return migrated;
+    }
+    return stored;
   }
 
-  static Future<void> setLanguage(String language) async {
+  /// [languageCode] is an ISO code, not a display name.
+  static Future<void> setLanguage(String languageCode) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_selectedLanguageKey, language);
+    await prefs.setString(_selectedLanguageKey, languageCode);
     await prefs.setBool(_languageSelectedKey, true);
   }
 

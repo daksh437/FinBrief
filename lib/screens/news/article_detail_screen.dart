@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../config/app_languages.dart';
 import '../../models/ai_summary.dart';
 import '../../models/news_article.dart';
 import '../../services/ai_service.dart';
 import '../../services/analytics_service.dart';
 import '../../services/news_service.dart';
+import '../../services/onboarding_prefs.dart';
 import '../../services/reading_history_service.dart';
 import '../../services/share_service.dart';
 import '../../services/squawk_service.dart';
@@ -43,6 +45,10 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   bool _bookmarked = false;
   String? _error;
 
+  /// The user's reading language, restored from prefs on open so the translate
+  /// chip already says what they want before they touch anything.
+  AppLanguage _language = AppLanguages.byCode(AppLanguages.defaultCode);
+
   String get _sourceText =>
       (widget.article.summary?.isNotEmpty ?? false) ? widget.article.summary! : widget.article.title;
 
@@ -64,6 +70,10 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
         .then((articles) => articles.where((a) => a.id != widget.article.id).take(5).toList());
     ReadingHistoryService.add(widget.article);
     AnalyticsService.instance.logArticleOpened(widget.article.id);
+
+    OnboardingPrefs.getLanguage().then((code) {
+      if (mounted) setState(() => _language = AppLanguages.byCode(code));
+    });
   }
 
   @override
@@ -115,6 +125,36 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     }
   }
 
+  /// Translates the article into the user's chosen language.
+  ///
+  /// Shares the explanation slot rather than adding a second panel — the user
+  /// asked one question, and two answers stacked up would be noise.
+  Future<void> _translate(AppLanguage language) async {
+    setState(() {
+      _explainLoading = true;
+      _explanationMode = 'translate';
+      _explanation = null;
+      _error = null;
+    });
+    try {
+      final translated = await AiService.instance.translate(_sourceText, language.code);
+      if (mounted) setState(() => _explanation = translated);
+      AnalyticsService.instance.logAiAction('translate_${language.code}');
+    } catch (e) {
+      if (mounted) setState(() => _error = _messageFor(e));
+    } finally {
+      if (mounted) setState(() => _explainLoading = false);
+    }
+  }
+
+  Future<void> _setLanguage(AppLanguage language) async {
+    setState(() => _language = language);
+    await OnboardingPrefs.setLanguage(language.code);
+    // Translate straight away — changing the language is the user asking for
+    // this article in it, not a settings change they'll act on later.
+    await _translate(language);
+  }
+
   Future<void> _askAi(String mode) async {
     setState(() {
       _explainLoading = true;
@@ -146,9 +186,14 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
       _error = null;
     });
     try {
-      // Prefer the AI summary if the user has generated one — that's the
-      // digestible version worth listening to; otherwise read the article text.
-      await SquawkService.instance.readAloud(_spokenText);
+      // If the article has been translated, read the translation in that
+      // language — someone who asked for Gujarati wants to hear Gujarati.
+      // Otherwise read the summary in English.
+      final translated = _explanationMode == 'translate' && _explanation != null;
+      await SquawkService.instance.readAloud(
+        translated ? _explanation! : _spokenText,
+        languageCode: translated ? _language.ttsLocale : 'en-IN',
+      );
     } catch (e) {
       if (mounted) setState(() => _error = _messageFor(e));
     } finally {
@@ -271,7 +316,14 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
           if (_summary != null || _impact != null) const AiDisclaimer(),
 
           const SizedBox(height: AppSpacing.lg),
-          AskAIBar(onAction: _askAi, activeMode: _explanationMode, loading: _explainLoading),
+          AskAIBar(
+            onAction: _askAi,
+            onTranslate: _translate,
+            language: _language,
+            onLanguageChanged: _setLanguage,
+            activeMode: _explanationMode,
+            loading: _explainLoading,
+          ),
           if (_explainLoading) ...[
             const SizedBox(height: AppSpacing.md),
             const _CardSkeleton(),

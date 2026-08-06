@@ -3,14 +3,28 @@ const tts = require('../services/ttsService');
 const aiHistory = require('../services/aiHistoryService');
 const chatContext = require('../services/chatContextService');
 const adviceGuard = require('../services/adviceGuard');
+const languages = require('../config/languages');
 
 async function translate(req, res) {
-  const { text } = req.body;
+  const { text, language } = req.body;
   if (!text) return res.status(400).json({ success: false, error: 'text is required' });
 
-  const translated = await gemini.translateToHindi(text);
-  aiHistory.log({ userId: req.user.uid, action: 'translate', prompt: text, response: translated });
-  res.json({ success: true, data: { translated }, fallback: gemini.MOCK_MODE });
+  // An unknown or missing code resolves to Hindi rather than failing — an
+  // older client that doesn't send one still works.
+  const code = languages.resolveLanguage(language);
+
+  const translated = await gemini.translate(text, code);
+  aiHistory.log({
+    userId: req.user.uid,
+    action: `translate:${code}`,
+    prompt: text,
+    response: translated,
+  });
+  res.json({
+    success: true,
+    data: { translated, language: code, languageName: languages.nameOf(code) },
+    fallback: gemini.MOCK_MODE,
+  });
 }
 
 // Returns { summary, keyPoints, confidence }. `summary` stays a plain string

@@ -21,6 +21,7 @@ const aiEngine = require('../services/ai/engine');
 const indianMarket = require('../services/indianMarketService');
 const marketService = require('../services/marketService');
 const adviceGuard = require('../services/adviceGuard');
+const languages = require('../config/languages');
 
 async function run() {
   assert.strictEqual(gemini.MOCK_MODE, true, 'gemini should be in mock mode without an API key');
@@ -32,8 +33,29 @@ async function run() {
   const articles = await news.getFeed();
   assert.ok(Array.isArray(articles) && articles.length > 0, 'mock feed should return sample articles');
 
-  const translated = await gemini.translateToHindi('Sensex hits record high');
+  const translated = await gemini.translate('Sensex hits record high', 'gu');
   assert.ok(typeof translated === 'string' && translated.length > 0, 'mock translate should return a string');
+
+  // Every advertised language must resolve; an unknown code falls back to
+  // Hindi rather than failing a request from a stale client.
+  for (const code of Object.keys(languages.LANGUAGES)) {
+    assert.strictEqual(languages.resolveLanguage(code), code, `${code} should resolve to itself`);
+    assert.ok(languages.nameOf(code), `${code} needs a display name`);
+  }
+  assert.strictEqual(languages.resolveLanguage('xx'), 'hi', 'unknown code should fall back to Hindi');
+  assert.strictEqual(languages.resolveLanguage(undefined), 'hi', 'missing code should fall back to Hindi');
+
+  // The language is part of the prompt and therefore part of the cache key —
+  // otherwise a Gujarati translation would be served to someone who asked for
+  // Marathi.
+  const guPrompt = aiPrompts.compose('translate', ['x', 'Gujarati']);
+  const mrPrompt = aiPrompts.compose('translate', ['x', 'Marathi']);
+  assert.notStrictEqual(guPrompt, mrPrompt, 'each language must produce a distinct prompt');
+  assert.notStrictEqual(
+    aiCache.keyFor({ task: 'translate', version: 'v3', model: 'm', prompt: guPrompt }),
+    aiCache.keyFor({ task: 'translate', version: 'v3', model: 'm', prompt: mrPrompt }),
+    'each language must produce a distinct cache key'
+  );
 
   const summarized = await gemini.summarize('Sensex hits record high on IT rally');
   const { audioContent, mock } = await tts.synthesize(summarized, 'en-IN');

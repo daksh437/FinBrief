@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+import '../../config/app_languages.dart';
 import '../../services/onboarding_prefs.dart';
 import '../../theme/app_spacing.dart';
-import '../../widgets/category_chip.dart';
 import 'select_interests_screen.dart';
 
-const _languages = ['English', 'Hindi', 'Both'];
-
+/// First-run language picker.
+///
+/// The options used to be English / Hindi / Both. Hindi reaches roughly 40% of
+/// India, and not the part with the deepest retail equity participation —
+/// Gujarat and Maharashtra do. Every listed language is shown in its own
+/// script, because someone looking for Gujarati is looking for "ગુજરાતી".
 class SelectLanguageScreen extends StatefulWidget {
   const SelectLanguageScreen({super.key});
 
@@ -14,7 +18,7 @@ class SelectLanguageScreen extends StatefulWidget {
 }
 
 class _SelectLanguageScreenState extends State<SelectLanguageScreen> {
-  String _selected = _languages.first;
+  String _selected = AppLanguages.defaultCode;
 
   Future<void> _continue() async {
     await OnboardingPrefs.setLanguage(_selected);
@@ -26,33 +30,58 @@ class _SelectLanguageScreenState extends State<SelectLanguageScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: AppSpacing.lg),
-              Text('Choose your language', style: Theme.of(context).textTheme.headlineSmall),
-              const SizedBox(height: AppSpacing.sm),
-              const Text('AI summaries and translations will use this language.'),
-              const SizedBox(height: AppSpacing.lg),
-              Wrap(
-                spacing: AppSpacing.sm,
-                runSpacing: AppSpacing.sm,
-                children: _languages
-                    .map((lang) => CategoryChip(
-                          label: lang,
-                          selected: _selected == lang,
-                          onTap: () => setState(() => _selected = lang),
-                        ))
-                    .toList(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Choose your language', style: theme.textTheme.headlineSmall),
+                  const SizedBox(height: AppSpacing.sm),
+                  const Text('News summaries will be read out and translated in this language. '
+                      'You can change it any time.'),
+                  const SizedBox(height: AppSpacing.md),
+                ],
               ),
-              const Spacer(),
-              FilledButton(onPressed: _continue, child: const Text('Continue')),
-            ],
-          ),
+            ),
+            // Scrollable: ten languages don't fit on a small screen, and the
+            // list will grow.
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                children: AppLanguages.all.map((l) {
+                  final selected = l.code == _selected;
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+                    elevation: selected ? 2 : 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+                      side: BorderSide(
+                        color: selected ? theme.colorScheme.primary : theme.colorScheme.outlineVariant,
+                        width: selected ? 2 : 1,
+                      ),
+                    ),
+                    child: ListTile(
+                      title: Text(l.native, style: theme.textTheme.titleMedium),
+                      subtitle: Text(l.name),
+                      trailing: selected ? Icon(Icons.check_circle, color: theme.colorScheme.primary) : null,
+                      onTap: () => setState(() => _selected = l.code),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: FilledButton(onPressed: _continue, child: const Text('Continue')),
+            ),
+          ],
         ),
       ),
     );

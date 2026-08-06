@@ -37,8 +37,16 @@ class AiService {
     return parse(res['data'] as Map<String, dynamic>);
   }
 
-  Future<String> translateToHindi(String text) {
-    return _call('/ai/translate', {'text': text}, (d) => d['translated'] as String);
+  /// Translates into the given language code ('hi', 'gu', 'mr', …).
+  ///
+  /// The backend resolves an unknown code to Hindi rather than failing, so a
+  /// missing preference degrades instead of erroring.
+  Future<String> translate(String text, String languageCode) {
+    return _call(
+      '/ai/translate',
+      {'text': text, 'language': languageCode},
+      (d) => d['translated'] as String,
+    );
   }
 
   Future<String> summarize(String text) {

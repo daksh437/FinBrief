@@ -1,5 +1,6 @@
 const engine = require('./ai/engine');
 const prompts = require('./ai/prompts');
+const languages = require('../config/languages');
 
 // Public AI surface for the rest of the backend. The heavy lifting (prompt
 // composition, model routing, caching, retry/fallback, logging) lives in
@@ -20,8 +21,14 @@ function parseJson(raw, fallback) {
   }
 }
 
-async function translateToHindi(text) {
-  return engine.run('translate', [text]);
+/// Translates into any supported Indian language.
+///
+/// The language is part of the prompt, and therefore part of the AI cache key,
+/// so the same article translated into Gujarati and Marathi are cached
+/// separately rather than one overwriting the other.
+async function translate(text, languageCode) {
+  const language = languages.nameOf(languageCode);
+  return engine.run('translate', [text, language]);
 }
 
 // Plain-prose summary. Kept separate from summarizeStructured() because the
@@ -136,7 +143,7 @@ async function marketBrief(headlines) {
 }
 
 module.exports = {
-  translateToHindi,
+  translate,
   summarize,
   summarizeStructured,
   analyzeImpact,
