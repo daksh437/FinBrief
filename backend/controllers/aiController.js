@@ -5,6 +5,16 @@ const chatContext = require('../services/chatContextService');
 const adviceGuard = require('../services/adviceGuard');
 const languages = require('../config/languages');
 
+/// The language this user reads in.
+///
+/// Sent as a header so every AI call carries it without each request body
+/// having to remember. Absent means English: a client that doesn't send one
+/// gets the behaviour it had before, rather than being switched to Hindi.
+const langOf = (req) => {
+  const raw = req.get('x-language') || req.body?.language;
+  return raw ? languages.resolveLanguage(raw) : 'en';
+};
+
 async function translate(req, res) {
   const { text, language } = req.body;
   if (!text) return res.status(400).json({ success: false, error: 'text is required' });
@@ -33,7 +43,7 @@ async function summary(req, res) {
   const { text } = req.body;
   if (!text) return res.status(400).json({ success: false, error: 'text is required' });
 
-  const result = await gemini.summarizeStructured(text);
+  const result = await gemini.summarizeStructured(text, langOf(req));
   aiHistory.log({ userId: req.user.uid, action: 'summary', prompt: text, response: result });
   res.json({ success: true, data: result, fallback: gemini.MOCK_MODE });
 }
@@ -43,14 +53,14 @@ async function explain(req, res) {
   if (!text) return res.status(400).json({ success: false, error: 'text is required' });
 
   try {
-    const explanation = await gemini.explain(text, mode);
+    const explanation = await gemini.explain(text, mode, langOf(req));
     aiHistory.log({ userId: req.user.uid, action: `explain:${mode}`, prompt: text, response: explanation });
     res.json({ success: true, data: { explanation, mode }, fallback: gemini.MOCK_MODE });
   } catch (err) {
     if (err.code === 'UNKNOWN_MODE') {
       return res.status(400).json({
         success: false,
-        error: 'mode must be one of: why-it-matters, future-impact, beginner, hindi',
+        error: 'mode must be one of: why-it-matters, future-impact, beginner',
       });
     }
     throw err;
@@ -61,7 +71,7 @@ async function impact(req, res) {
   const { text } = req.body;
   if (!text) return res.status(400).json({ success: false, error: 'text is required' });
 
-  const analysis = await gemini.analyzeImpact(text);
+  const analysis = await gemini.analyzeImpact(text, langOf(req));
   aiHistory.log({ userId: req.user.uid, action: 'impact', prompt: text, response: analysis });
   res.json({ success: true, data: analysis, fallback: gemini.MOCK_MODE });
 }
@@ -97,7 +107,7 @@ async function chat(req, res) {
     console.error('[chat] context build failed:', err.message);
   }
 
-  const reply = await gemini.chat(messages, context);
+  const reply = await gemini.chat(messages, context, langOf(req));
   aiHistory.log({ userId: req.user.uid, action: 'chat', prompt: lastUserMessage, response: reply });
   res.json({ success: true, data: { reply }, fallback: gemini.MOCK_MODE });
 }
@@ -106,7 +116,7 @@ async function voiceSummary(req, res) {
   const { text, languageCode } = req.body;
   if (!text) return res.status(400).json({ success: false, error: 'text is required' });
 
-  const summarized = await gemini.summarize(text);
+  const summarized = await gemini.summarize(text, langOf(req));
   const { audioContent, mock } = await tts.synthesize(summarized, languageCode);
 
   // Log the text only — audio bytes would bloat the history documents.

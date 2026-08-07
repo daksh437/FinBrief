@@ -49,6 +49,21 @@ async function run() {
   // The language is part of the prompt and therefore part of the cache key —
   // otherwise a Gujarati translation would be served to someone who asked for
   // Marathi.
+  // Choosing a language applies to every AI answer, not just the translate
+  // button — a user who picked Gujarati should get the summary and the impact
+  // in Gujarati too. Since the instruction is part of the prompt it is part of
+  // the cache key, so a Gujarati answer can't be served to a Marathi reader.
+  const guSummary = aiPrompts.compose('summary', ['x'], { language: 'Gujarati' });
+  const mrSummary = aiPrompts.compose('summary', ['x'], { language: 'Marathi' });
+  const enSummary = aiPrompts.compose('summary', ['x'], { language: 'English' });
+  assert.notStrictEqual(guSummary, mrSummary, 'each language must produce a distinct summary prompt');
+  assert.strictEqual(
+    enSummary,
+    aiPrompts.compose('summary', ['x']),
+    'English must not add an instruction — it is the default and would change every cache key'
+  );
+  assert.ok(/Gujarati/.test(guSummary), 'the language must reach the prompt');
+
   const guPrompt = aiPrompts.compose('translate', ['x', 'Gujarati']);
   const mrPrompt = aiPrompts.compose('translate', ['x', 'Marathi']);
   assert.notStrictEqual(guPrompt, mrPrompt, 'each language must produce a distinct prompt');

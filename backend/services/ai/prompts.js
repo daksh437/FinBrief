@@ -143,7 +143,26 @@ const FALLBACK = {
 };
 
 /// Assembles the final prompt string sent to the model.
-function compose(taskName, args = [], { fallback = false } = {}) {
+/// Tells the model which language to answer in.
+///
+/// Added centrally rather than written into each prompt: a user who chose
+/// Gujarati wants the summary, the impact and the chat reply in Gujarati, not
+/// an English answer plus a translate button. Doing it per-task would have
+/// meant remembering it in every prompt written from here on.
+///
+/// Financial terms stay in English on purpose — that is how people here read
+/// and talk about markets, and a fully translated "repo rate" reads as
+/// stilted to someone who uses the term daily.
+function languageInstruction(language) {
+  if (!language || language === 'English') return '';
+  return (
+    `\n\nWrite your entire response in ${language}. Keep company names, tickers, ` +
+    'numbers and established financial terms (repo rate, IPO, NAV, inflation) in ' +
+    'English, the way people actually say them.'
+  );
+}
+
+function compose(taskName, args = [], { fallback = false, language = null } = {}) {
   const task = PROMPTS[taskName];
   if (!task) throw Object.assign(new Error(`Unknown prompt task: ${taskName}`), { code: 'UNKNOWN_TASK' });
 
@@ -156,7 +175,13 @@ function compose(taskName, args = [], { fallback = false } = {}) {
   const output = fallback ? FALLBACK.output : resolve(task.output);
   const user = task.build(...args);
 
-  return `${system}\n\n${output}\n\n${user}`;
+  // The instruction is part of the prompt, so it is part of the AI cache key —
+  // a Gujarati answer can never be served to someone who asked in Marathi.
+  // `translate` is excluded because its target language is already the whole
+  // point of the task.
+  const langue = taskName === 'translate' ? '' : languageInstruction(language);
+
+  return `${system}\n\n${output}${langue}\n\n${user}`;
 }
 
 function versionOf(taskName) {

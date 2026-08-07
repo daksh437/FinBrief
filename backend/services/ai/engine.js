@@ -56,10 +56,10 @@ async function callModel(modelName, prompt) {
  * @param {Array}  args      arguments passed to that task's build()
  * @param {object} options   { cache = true, mockValue }
  */
-async function run(task, args = [], { cache = true, mockValue } = {}) {
+async function run(task, args = [], { cache = true, mockValue, language = null } = {}) {
   const version = prompts.versionOf(task);
   const model = modelRouter.modelFor(task);
-  const prompt = prompts.compose(task, args);
+  const prompt = prompts.compose(task, args, { language });
 
   if (MOCK_MODE) {
     return mockValue !== undefined
@@ -86,7 +86,10 @@ async function run(task, args = [], { cache = true, mockValue } = {}) {
       // Final attempt drops the strict output template — formatting demands are
       // the usual cause of repeated failures (v13 §9 fallback prompts).
       const isFinal = attempt === MAX_ATTEMPTS;
-      const activePrompt = isFinal ? prompts.compose(task, args, { fallback: true }) : prompt;
+      // The language instruction survives the fallback: dropping the output
+      // template is about formatting, and answering in the wrong language
+      // would be a worse failure than a badly formatted one.
+      const activePrompt = isFinal ? prompts.compose(task, args, { fallback: true, language }) : prompt;
 
       try {
         const started = Date.now();

@@ -1,5 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/app_languages.dart';
+import 'api_service.dart';
 
 // Local, device-only flags for one-time setup flows (onboarding intro,
 // language/interest pickers). Not synced to the backend — reinstalling the
@@ -51,6 +52,8 @@ class OnboardingPrefs {
   static Future<void> setLanguage(String languageCode) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_selectedLanguageKey, languageCode);
+    // The API layer caches this for its header; drop that copy.
+    ApiService.invalidateLanguage();
     await prefs.setBool(_languageSelectedKey, true);
   }
 

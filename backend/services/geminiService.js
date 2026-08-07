@@ -34,13 +34,13 @@ async function translate(text, languageCode) {
 // Plain-prose summary. Kept separate from summarizeStructured() because the
 // voice-summary route feeds this straight into TTS, which must speak
 // sentences rather than JSON.
-async function summarize(text) {
-  return engine.run('summaryPlain', [text]);
+async function summarize(text, languageCode) {
+  return engine.run('summaryPlain', [text], { language: languages.nameOf(languageCode) });
 }
 
 // Adds key points + a confidence score on top of the prose summary. The
 // `summary` field stays a plain string so existing clients keep working.
-async function summarizeStructured(text) {
+async function summarizeStructured(text, languageCode) {
   if (MOCK_MODE) {
     return {
       summary: '[mock response — set GEMINI_API_KEY for real output] Markets moved on the back of this news.',
@@ -49,7 +49,7 @@ async function summarizeStructured(text) {
     };
   }
 
-  const raw = await engine.run('summary', [text]);
+  const raw = await engine.run('summary', [text], { language: languages.nameOf(languageCode) });
   const parsed = parseJson(raw, { summary: raw, keyPoints: [], confidence: 0 });
   return {
     summary: typeof parsed.summary === 'string' ? parsed.summary : raw,
@@ -63,7 +63,7 @@ async function summarizeStructured(text) {
 /// No direction is returned. A `sentiment` field used to be part of this, but
 /// attaching bullish/bearish to a named security reads as a call regardless of
 /// the wording around it.
-async function analyzeImpact(text) {
+async function analyzeImpact(text, languageCode) {
   if (MOCK_MODE) {
     return {
       reason: 'Mock mode — set GEMINI_API_KEY for real analysis.',
@@ -71,7 +71,7 @@ async function analyzeImpact(text) {
     };
   }
 
-  const raw = await engine.run('impact', [text]);
+  const raw = await engine.run('impact', [text], { language: languages.nameOf(languageCode) });
   const parsed = parseJson(raw, { reason: raw });
   return {
     reason: parsed.reason || raw,
@@ -79,11 +79,11 @@ async function analyzeImpact(text) {
   };
 }
 
-async function explain(text, mode) {
+async function explain(text, mode, languageCode) {
   if (!prompts.PROMPTS.explain.modes.includes(mode)) {
     throw Object.assign(new Error('Unknown explain mode'), { code: 'UNKNOWN_MODE' });
   }
-  return engine.run('explain', [text, mode]);
+  return engine.run('explain', [text, mode], { language: languages.nameOf(languageCode) });
 }
 
 /**
@@ -91,7 +91,7 @@ async function explain(text, mode) {
  * @param messages [{ role: 'user'|'assistant', text }]
  * @param context  optional string built by chatContextService
  */
-async function chat(messages, context = null) {
+async function chat(messages, context = null, languageCode) {
   if (MOCK_MODE) {
     return '[mock response — set GEMINI_API_KEY for real output] I am your AI financial assistant. Ask me about markets, stocks, or news.';
   }
@@ -106,7 +106,7 @@ async function chat(messages, context = null) {
 
   // Chat is conversational and context-dependent, so caching would serve
   // stale answers — disabled deliberately.
-  return engine.run('chat', [question, context], { cache: false });
+  return engine.run('chat', [question, context], { cache: false, language: languages.nameOf(languageCode) });
 }
 
 /// The 3 companies/assets most in the news, derived from real headlines.

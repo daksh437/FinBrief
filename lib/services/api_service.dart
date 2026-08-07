@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
 import 'auth_service.dart';
+import 'onboarding_prefs.dart';
 
 /// Standard failure codes surfaced in the `error` field of an API response.
 /// Callers can compare against these instead of matching on message strings.
@@ -41,9 +42,27 @@ class ApiService {
     );
   }
 
+  /// The user's reading language, cached after the first read.
+  ///
+  /// Sent on every request as a header rather than added to each AI call's
+  /// body: someone who picked Gujarati wants the summary, the impact and the
+  /// chat reply in Gujarati, and a per-call parameter is one that eventually
+  /// gets forgotten at a new call site.
+  static String? _language;
+
+  static Future<String> _readLanguage() async {
+    return _language ??= await OnboardingPrefs.getLanguage();
+  }
+
+  /// Called when the user changes language so the next request uses it.
+  static void invalidateLanguage() => _language = null;
+
   Future<Map<String, String>> _headers({String? idempotencyKey}) async {
     final token = await AuthService.instance.idToken;
-    final headers = <String, String>{'Content-Type': 'application/json'};
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+      'X-Language': await _readLanguage(),
+    };
     if (token != null) headers['Authorization'] = 'Bearer $token';
     if (idempotencyKey != null) headers['X-Idempotency-Key'] = idempotencyKey;
     return headers;
