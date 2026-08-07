@@ -13,13 +13,39 @@ const monitoring = require('./monitoringService');
 // never re-enriched once stored.
 const AI_ENRICH_LIMIT = Number(process.env.AI_ENRICH_LIMIT || 3);
 
-async function loadSeenHashes(limit = 200) {
+/// Which of these headlines have already been enriched.
+///
+/// This used to load the 200 most recently processed articles and treat
+/// anything outside that window as new. It quietly cost a fortune: RSS feeds
+/// carry the same article for days, the pipeline runs 288 times a day across
+/// categories, and every run pushed older entries out of the window. An
+/// article that fell out looked new again, was re-enriched, was re-saved with
+/// a fresh timestamp, and pushed something else out in turn — a churn loop
+/// that billed roughly 550 AI calls a day for about 150 genuinely new stories.
+///
+/// Documents are keyed by headline hash, so existence can be checked exactly
+/// instead of guessed from a window. Firestore reads are a rounding error next
+/// to a Gemini call.
+async function loadSeenHashes(hashes = []) {
+  if (!hashes.length) return new Set();
+
   try {
-    const snap = await db.collection('news').orderBy('processedAt', 'desc').limit(limit).get();
-    return new Set(snap.docs.map((d) => d.data().headlineHash).filter(Boolean));
+    const seen = new Set();
+    // getAll caps at 300 refs per call; a feed page is ~150, but batch anyway
+    // so a larger limit can't break this.
+    for (let i = 0; i < hashes.length; i += 300) {
+      const refs = hashes.slice(i, i + 300).map((h) => db.collection('news').doc(h));
+      const docs = await db.getAll(...refs);
+      docs.forEach((d) => {
+        if (d.exists) seen.add(d.id);
+      });
+    }
+    return seen;
   } catch (err) {
     monitoring.logApiFailure('firestore:news', err.message);
-    return new Set();
+    // Treating everything as seen on failure is the safe direction: skipping a
+    // cycle costs nothing, re-enriching the whole feed costs money.
+    return new Set(hashes);
   }
 }
 
@@ -108,13 +134,32 @@ async function run({ category = 'business', limit = 20 } = {}) {
     }
   }
 
-  const seen = await loadSeenHashes();
+  // Hash first so existence can be checked for exactly these headlines,
+  // rather than against a rolling window of whatever was processed recently.
+  const hashes = raw.filter((a) => a.title).map((a) => processor.headlineHash(a.title));
+  const seen = await loadSeenHashes(hashes);
   const processed = processor.process(raw, seen);
 
+  // Only high-priority stories get an AI summary.
+  //
+  // The summary has exactly one consumer: the body of an instant breaking
+  // notification, which only fires for high priority. sendBrief uses the raw
+  // headline, and nothing else reads it back. Enriching the top few of every
+  // run regardless of priority meant paying for ~500 summaries a day to send a
+  // handful of notifications — most were generated, stored, and never looked
+  // at by anything.
+  //
+  // Everything else is still stored, because storage is free and the record
+  // keeps dedupe exact and feeds chat context. It just skips the AI call.
   const stored = [];
-  for (const article of processed.slice(0, AI_ENRICH_LIMIT)) {
+  let enrichedCount = 0;
+
+  for (const article of processed) {
     try {
-      const enrichment = await enrich(article);
+      const shouldEnrich = article.priority === 'high' && enrichedCount < AI_ENRICH_LIMIT;
+      const enrichment = shouldEnrich ? await enrich(article) : {};
+      if (shouldEnrich) enrichedCount += 1;
+
       const doc = await save(article, enrichment);
       stored.push({ ...doc, id: article.headlineHash });
     } catch (err) {
