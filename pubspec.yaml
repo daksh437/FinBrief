@@ -51,6 +51,9 @@ dependencies:
   shimmer: ^3.0.0
   google_sign_in: 6.2.1
   share_plus: ^13.3.0
+  # Explicit rather than transitive: the share card is written to a real temp
+  # file before sharing, because Android share targets need a path.
+  path_provider: ^2.1.5
   connectivity_plus: ^7.3.1
   flutter_markdown_plus: ^1.0.12
   url_launcher: ^6.3.2

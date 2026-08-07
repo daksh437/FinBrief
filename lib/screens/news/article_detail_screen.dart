@@ -208,6 +208,19 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     }
   }
 
+  Future<void> _shareSummary() async {
+    final summary = _summary;
+    if (summary == null) return;
+
+    await ShareService.shareSummaryCard(
+      context: context,
+      article: widget.article,
+      summary: summary.summary,
+      keyPoints: summary.keyPoints,
+    );
+    AnalyticsService.instance.logAiAction('share_summary_card');
+  }
+
   Future<void> _toggleBookmark() async {
     setState(() => _bookmarked = !_bookmarked);
     if (_bookmarked) {
@@ -294,7 +307,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
             const _CardSkeleton(),
           ] else if (_summary != null) ...[
             const SizedBox(height: AppSpacing.md),
-            SummaryCard(summary: _summary!),
+            SummaryCard(summary: _summary!, onShare: _shareSummary),
           ],
 
           const SizedBox(height: AppSpacing.md),

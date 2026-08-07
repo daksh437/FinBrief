@@ -7,7 +7,11 @@ import '../theme/app_spacing.dart';
 class SummaryCard extends StatelessWidget {
   final AiSummary summary;
 
-  const SummaryCard({super.key, required this.summary});
+  /// Shares this summary as an image. Optional so the card still renders
+  /// somewhere sharing doesn't apply.
+  final VoidCallback? onShare;
+
+  const SummaryCard({super.key, required this.summary, this.onShare});
 
   String get _copyText {
     final points = summary.keyPoints.map((p) => '• $p').join('\n');
@@ -29,6 +33,13 @@ class SummaryCard extends StatelessWidget {
                 Text('AI Summary', style: Theme.of(context).textTheme.titleSmall),
                 const Spacer(),
                 if (summary.confidence > 0) _ConfidenceChip(confidence: summary.confidence),
+                if (onShare != null)
+                  IconButton(
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.ios_share, size: 18),
+                    tooltip: 'Share as image',
+                    onPressed: onShare,
+                  ),
                 IconButton(
                   visualDensity: VisualDensity.compact,
                   icon: const Icon(Icons.copy_outlined, size: 18),
