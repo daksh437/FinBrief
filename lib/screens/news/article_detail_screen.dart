@@ -52,6 +52,21 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   String get _sourceText =>
       (widget.article.summary?.isNotEmpty ?? false) ? widget.article.summary! : widget.article.title;
 
+  /// Heading above the AI result panel.
+  ///
+  /// Translation shares this panel but is not one of [askAiActions] — it hits
+  /// a different endpoint. Looking the mode up in that list threw "Bad state:
+  /// No element" the moment anyone translated, so the translation arrived and
+  /// the screen failed rendering it. Anything unrecognised falls back to a
+  /// generic heading rather than throwing.
+  String get _explanationTitle {
+    if (_explanationMode == 'translate') return 'In ${_language.native}';
+    for (final action in askAiActions) {
+      if (action.mode == _explanationMode) return action.label;
+    }
+    return 'AI response';
+  }
+
   /// What the Listen button reads out: the generated AI summary when there is
   /// one, otherwise the headline and article snippet.
   String get _spokenText {
@@ -352,7 +367,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                       children: [
                         Expanded(
                           child: Text(
-                            askAiActions.firstWhere((a) => a.mode == _explanationMode).label,
+                            _explanationTitle,
                             style: Theme.of(context).textTheme.titleSmall,
                           ),
                         ),
