@@ -43,6 +43,9 @@ service cloud.firestore {
       match /portfolio/{docId} {
         allow read, write: if isOwner(userId);
       }
+      match /funds/{docId} {
+        allow read, write: if isOwner(userId);
+      }
       // Notifications and purchases are produced by the backend; the client
       // reads them but must not forge them.
       match /notifications/{docId} {

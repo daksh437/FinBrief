@@ -22,6 +22,7 @@ const indianMarket = require('../services/indianMarketService');
 const marketService = require('../services/marketService');
 const adviceGuard = require('../services/adviceGuard');
 const languages = require('../config/languages');
+const amfi = require('../services/amfiService');
 
 async function run() {
   assert.strictEqual(gemini.MOCK_MODE, true, 'gemini should be in mock mode without an API key');
@@ -184,6 +185,36 @@ async function run() {
   const impact = await gemini.analyzeImpact('RBI holds repo rate at 6.5%');
   assert.ok(!('sentiment' in impact), 'impact must not return a sentiment label');
   assert.ok(!('confidence' in impact), 'impact must not return a confidence score');
+
+  // --- Mutual funds (AMFI) --------------------------------------------------
+  //
+  // AMFI's file is the official source and it changes shape rarely, but when
+  // it does the whole feature goes quiet rather than erroring — so the parse
+  // is asserted rather than assumed.
+  const { schemes } = await amfi.load();
+  assert.ok(schemes.length > 5000, `expected thousands of schemes, got ${schemes.length}`);
+
+  const sample = schemes[0];
+  for (const field of ['code', 'name', 'nav', 'date']) {
+    assert.ok(sample[field] != null, `parsed scheme is missing ${field}`);
+  }
+  assert.ok(schemes.every((s) => Number.isFinite(s.nav)), 'every NAV must be a number');
+
+  // Search has to find a fund by the name people actually use. "SBI Bluechip"
+  // was renamed to "SBI Large Cap" and AMFI carries only the new name, so a
+  // plain substring search returns nothing at all.
+  const renamed = await amfi.search('sbi bluechip', { limit: 3 });
+  assert.ok(renamed.length > 0, 'renamed funds must be findable by their old name');
+  assert.ok(/large cap/i.test(renamed[0].name), 'sbi bluechip should resolve to SBI Large Cap');
+
+  // Spelling variation: people type "bluechip", the file says "Blue Chip".
+  assert.ok((await amfi.search('hdfc flexi cap', { limit: 1 })).length > 0, 'common search must work');
+
+  // Direct Growth plans rank first — the ones a retail investor actually holds.
+  const ranked = await amfi.search('parag parikh flexi', { limit: 1 });
+  assert.ok(/direct/i.test(ranked[0].name), 'Direct plans should rank first');
+
+  assert.strictEqual((await amfi.navFor(['definitely-not-a-code'])).length, 0, 'unknown scheme codes must be dropped');
 
   console.log('All smoke tests passed.');
 }
