@@ -7,6 +7,7 @@ import '../../widgets/settings_tile.dart';
 import '../../widgets/profile_header.dart';
 import '../bookmarks/bookmarks_screen.dart';
 import '../bookmarks/history_screen.dart';
+import '../funds/funds_screen.dart';
 import '../portfolio/portfolio_screen.dart';
 import '../premium/premium_screen.dart';
 import '../settings/settings_screen.dart';
@@ -63,6 +64,11 @@ class ProfileScreen extends StatelessWidget {
             icon: Icons.account_balance_wallet_outlined,
             title: 'Portfolio',
             onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PortfolioScreen())),
+          ),
+          SettingsTile(
+            icon: Icons.pie_chart_outline,
+            title: 'Mutual Funds',
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const FundsScreen())),
           ),
           SettingsTile(
             icon: Icons.bookmark_outline,
