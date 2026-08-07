@@ -59,6 +59,44 @@ class UserProvider extends ChangeNotifier {
     }
   }
 
+  /// Re-reads the profile without the loading state.
+  ///
+  /// The AI usage counter lives on the profile, which was loaded once at
+  /// startup and never again — so Profile could sit showing "3 / 5 used" while
+  /// the server had already refused the sixth call. Screens that display the
+  /// counter refresh through this on open.
+  ///
+  /// Silent on failure: this is a background correction, and replacing a
+  /// slightly stale number with an error would be worse.
+  Future<void> refresh() async {
+    try {
+      final res = await ApiService.instance.get('/auth/profile');
+      if (res['success'] != true) return;
+      profile = UserProfile.fromJson(res['data'] as Map<String, dynamic>);
+      isStale = false;
+      notifyListeners();
+    } catch (_) {
+      // Keep whatever is on screen.
+    }
+  }
+
+  /// Records that an AI action was just used, so the counter moves without
+  /// waiting for a round trip. The server remains the authority — this only
+  /// keeps the display honest between refreshes.
+  void noteAiUsed({bool limitReached = false}) {
+    final current = profile;
+    if (current == null) return;
+
+    final used = limitReached ? current.dailyLimit : current.aiUsedToday + 1;
+    profile = UserProfile(
+      uid: current.uid,
+      plan: current.plan,
+      email: current.email,
+      aiUsedToday: used.clamp(0, current.dailyLimit),
+    );
+    notifyListeners();
+  }
+
   void clear() {
     profile = null;
     error = null;

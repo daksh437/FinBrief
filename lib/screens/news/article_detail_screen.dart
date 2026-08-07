@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import '../../config/app_languages.dart';
 import '../../models/ai_summary.dart';
 import '../../models/news_article.dart';
+import '../../providers/user_provider.dart';
 import '../../services/ai_service.dart';
 import '../../services/analytics_service.dart';
 import '../../services/news_service.dart';
@@ -99,13 +101,25 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     super.dispose();
   }
 
-  /// Maps AI failures onto a single friendly message. Credit exhaustion gets
-  /// its own copy since it's an expected state, not an error.
+  /// Maps AI failures onto a single friendly message. Hitting the daily limit
+  /// gets its own copy since it's an expected state, not an error.
+  ///
+  /// Also corrects the counter: the profile is loaded once at startup, so
+  /// without this it could still read "3 of 5 used" on the screen that just
+  /// told the user they were out.
   String _messageFor(Object error) {
     if (error is AiInsufficientCreditsException) {
-      return "You've used today's free AI credits. Upgrade to Premium for unlimited access.";
+      _noteAiUsed(limitReached: true);
+      return "You've used today's free AI limit. Upgrade to Premium for unlimited access.";
     }
     return 'Something went wrong. Please try again.';
+  }
+
+  /// Moves the local usage counter so it doesn't lag a round trip behind. The
+  /// server stays the authority; this only keeps the display honest.
+  void _noteAiUsed({bool limitReached = false}) {
+    if (!mounted) return;
+    context.read<UserProvider>().noteAiUsed(limitReached: limitReached);
   }
 
   Future<void> _loadSummary() async {
@@ -117,6 +131,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
       final summary = await AiService.instance.summarizeStructured(_sourceText);
       if (mounted) setState(() => _summary = summary);
       AnalyticsService.instance.logAiAction('summary');
+      _noteAiUsed();
     } catch (e) {
       if (mounted) setState(() => _error = _messageFor(e));
     } finally {
@@ -133,6 +148,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
       final impact = await AiService.instance.analyzeMarketImpact(_sourceText);
       if (mounted) setState(() => _impact = impact);
       AnalyticsService.instance.logAiAction('impact');
+      _noteAiUsed();
     } catch (e) {
       if (mounted) setState(() => _error = _messageFor(e));
     } finally {
@@ -155,6 +171,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
       final translated = await AiService.instance.translate(_sourceText, language.code);
       if (mounted) setState(() => _explanation = translated);
       AnalyticsService.instance.logAiAction('translate_${language.code}');
+      _noteAiUsed();
     } catch (e) {
       if (mounted) setState(() => _error = _messageFor(e));
     } finally {
@@ -181,6 +198,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
       final explanation = await AiService.instance.explain(_sourceText, mode);
       if (mounted) setState(() => _explanation = explanation);
       AnalyticsService.instance.logAiAction('explain_$mode');
+      _noteAiUsed();
     } catch (e) {
       if (mounted) setState(() => _error = _messageFor(e));
     } finally {

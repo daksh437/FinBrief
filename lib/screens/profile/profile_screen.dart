@@ -12,8 +12,24 @@ import '../portfolio/portfolio_screen.dart';
 import '../premium/premium_screen.dart';
 import '../settings/settings_screen.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // The profile was loaded once at startup, so the AI usage counter here
+    // could show "3 / 5 used" while the server had already refused the sixth
+    // call. Re-read it whenever this screen opens.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<UserProvider>().refresh();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
