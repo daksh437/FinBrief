@@ -6,11 +6,17 @@ class UserProfile {
   final String plan; // 'free' | 'premium'
   final int aiUsedToday;
 
+  /// Set by a service-account write only — never grantable from the app.
+  /// Controls whether the Admin entry is shown; the routes themselves are
+  /// gated on the server.
+  final bool isAdmin;
+
   UserProfile({
     required this.uid,
     required this.plan,
     this.email,
     this.aiUsedToday = 0,
+    this.isAdmin = false,
   });
 
   bool get isPremium => plan == 'premium';
@@ -36,6 +42,7 @@ class UserProfile {
       email: json['email'] as String?,
       plan: (json['plan'] as String?) ?? 'free',
       aiUsedToday: usedToday,
+      isAdmin: json['isAdmin'] == true,
     );
   }
 }

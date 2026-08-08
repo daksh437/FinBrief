@@ -16,6 +16,7 @@ const configRoutes = require('./routes/config');
 const feedRoutes = require('./routes/feed');
 const legalRoutes = require('./routes/legal');
 const fundsRoutes = require('./routes/funds');
+const adminRoutes = require('./routes/admin');
 const { rateLimit } = require('./middleware/rateLimit');
 const { startJobs } = require('./jobs');
 
@@ -47,6 +48,7 @@ app.use('/feedback', feedbackRoutes);
 app.use('/config', configRoutes);
 app.use('/feed', feedRoutes);
 app.use('/funds', fundsRoutes);
+app.use('/admin', adminRoutes);
 
 // AI routes degrade gracefully instead of surfacing a 5xx — the app should
 // keep working (with a fallback payload) even if Gemini/news APIs are down.

@@ -93,6 +93,7 @@ class UserProvider extends ChangeNotifier {
       plan: current.plan,
       email: current.email,
       aiUsedToday: used.clamp(0, current.dailyLimit),
+      isAdmin: current.isAdmin,
     );
     notifyListeners();
   }

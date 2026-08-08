@@ -5,6 +5,7 @@ import '../../services/auth_service.dart';
 import '../../theme/app_spacing.dart';
 import '../../widgets/settings_tile.dart';
 import '../../widgets/profile_header.dart';
+import '../admin/admin_screen.dart';
 import '../bookmarks/bookmarks_screen.dart';
 import '../bookmarks/history_screen.dart';
 import '../funds/funds_screen.dart';
@@ -107,6 +108,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
             title: 'Settings',
             onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SettingsScreen())),
           ),
+          // Only shown to admins. The routes behind it return 404 to everyone
+          // else, so this is tidiness rather than the access control.
+          if (profile?.isAdmin == true) ...[
+            const Divider(),
+            SettingsTile(
+              icon: Icons.shield_outlined,
+              title: 'Admin',
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminScreen())),
+            ),
+          ],
           const Divider(),
           // Google Play requires apps that create accounts to offer deletion
           // from inside the app. Kept visually distinct from the tiles above so
