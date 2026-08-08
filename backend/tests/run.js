@@ -195,6 +195,29 @@ async function run() {
     assert.ok(!adviceGuard.seeksAdvice(question), `advice guard must NOT block: "${question}"`);
   }
 
+  // Many feed items are a bare headline, and asked to "summarise" one the
+  // model padded with remarks about the source: "Reported by publication
+  // source X", "Source text contains only headline information". Every task
+  // that receives article text must carry the guard against that.
+  for (const task of ['summary', 'summaryPlain', 'impact', 'explain']) {
+    const prompt = aiPrompts.compose(task, ['some text', 'why-it-matters']);
+    assert.ok(
+      /Never mention the source text/.test(prompt),
+      `${task} must forbid commenting on the source instead of the news`
+    );
+  }
+
+  // A headline-only item gets a different instruction: explaining a headline is
+  // a real answer, "summarising" one sentence is not.
+  assert.ok(
+    /Explain what this financial headline means/.test(aiPrompts.compose('summary', ['Sensex up 400 points'])),
+    'short input should switch to the explain-a-headline instruction'
+  );
+  assert.ok(
+    /Summarise this financial news/.test(aiPrompts.compose('summary', ['x'.repeat(400)])),
+    'full article text should still be summarised'
+  );
+
   // Generated content must carry no direction — see the SEBI note in
   // services/ai/prompts.js.
   const impact = await gemini.analyzeImpact('RBI holds repo rate at 6.5%');

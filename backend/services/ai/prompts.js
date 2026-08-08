@@ -10,23 +10,45 @@ const SYSTEM_BASE =
   'Be accurate, concise and neutral. Never give personalised investment advice. ' +
   'Preserve company names, tickers and numbers exactly as written.';
 
+// Never let the model talk about the input instead of the news.
+//
+// Many feed items are a headline with no body — Google News carries no
+// description. Asked to "summarise" one sentence, the model padded: "Reported
+// by publication source The Indian Awaaz", "Source text contains only headline
+// information without specific index data". True, useless, and it told the
+// reader the app had nothing to say.
+const NO_META_COMMENTARY =
+  ' Never mention the source text, the publication, its length, or what it does not ' +
+  'contain. Write only about the events and figures themselves. If all you have is a ' +
+  'headline, explain what that headline means for an ordinary investor — do not say ' +
+  'that details are missing.';
+
+/// Feed items shorter than this are effectively a bare headline.
+const HEADLINE_ONLY_CHARS = 180;
+
+const summaryAsk = (text) =>
+  String(text || '').trim().length < HEADLINE_ONLY_CHARS
+    ? 'Explain what this financial headline means and why it matters.'
+    : 'Summarise this financial news.';
+
 const PROMPTS = {
   summary: {
-    version: 'v2',
+    version: 'v3',
     system: `${SYSTEM_BASE} You summarise news so it can be read in about 30 seconds.`,
     output:
       'Respond as strict JSON with keys "summary" (2-3 plain-English sentences), ' +
-      '"keyPoints" (array of 2-4 short bullet strings), and "confidence" (0-1 number).',
-    build: (text) => `Summarise this financial news.\n\nText:\n${text}`,
+      '"keyPoints" (array of 2-4 short bullet strings), and "confidence" (0-1 number).' +
+      NO_META_COMMENTARY,
+    build: (text) => `${summaryAsk(text)}\n\nText:\n${text}`,
   },
 
   // Deliberately separate from `summary`: the voice-summary route feeds this
   // straight into TTS, which must speak prose rather than JSON.
   summaryPlain: {
-    version: 'v1',
+    version: 'v2',
     system: `${SYSTEM_BASE} You summarise news in plain prose suitable for reading aloud.`,
-    output: 'Return only the summary text. No JSON, no markdown, no bullet points.',
-    build: (text) => `Summarise this financial news in 2-3 short sentences.\n\nText:\n${text}`,
+    output: 'Return only the summary text. No JSON, no markdown, no bullet points.' + NO_META_COMMENTARY,
+    build: (text) => `${summaryAsk(text)} Keep it to 2-3 short sentences.\n\nText:\n${text}`,
   },
 
   // Hindi covers roughly 40% of India. The states with the deepest retail
@@ -54,7 +76,7 @@ const PROMPTS = {
   // research-analyst regulations sit on. Describing the story and the parts of
   // the market it touches keeps the useful half without the call.
   impact: {
-    version: 'v3',
+    version: 'v4',
     system:
       `${SYSTEM_BASE} You explain which parts of the market a story concerns and why. ` +
       'You never say whether something will rise or fall, never label news as positive ' +
@@ -62,7 +84,7 @@ const PROMPTS = {
     output:
       'Respond as strict JSON with keys "reason" (one or two sentences explaining what ' +
       'the news concerns, in factual terms), and "affectedSectors" (array of 1-4 short ' +
-      'sector names, e.g. "IT", "Banking", "Energy").',
+      'sector names, e.g. "IT", "Banking", "Energy").' + NO_META_COMMENTARY,
     build: (text) => `Which parts of the market does this financial news concern, and why?\n\nText:\n${text}`,
   },
 
@@ -102,9 +124,9 @@ const PROMPTS = {
   },
 
   explain: {
-    version: 'v1',
+    version: 'v2',
     system: `${SYSTEM_BASE} You explain financial news clearly to non-experts.`,
-    output: 'Return 2-4 short sentences of plain text.',
+    output: 'Return 2-4 short sentences of plain text.' + NO_META_COMMENTARY,
     build: (text, mode) => {
       const asks = {
         'why-it-matters': 'Explain why this matters for an ordinary Indian retail investor.',
@@ -120,7 +142,7 @@ const PROMPTS = {
       };
       return `${asks[mode]}\n\nText:\n${text}`;
     },
-    modes: ['why-it-matters', 'future-impact', 'beginner', 'hindi'],
+    modes: ['why-it-matters', 'future-impact', 'beginner'],
   },
 
   chat: {
